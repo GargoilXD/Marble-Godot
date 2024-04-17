@@ -1,0 +1,86 @@
+extends MarbleData
+class_name MarbleInteger
+
+func _init(value:int) -> void:
+	Value = value
+
+func add(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+
+func subtract(data:MarbleData):
+	if data is MarbleInteger:
+		Value -= data.Value
+	return self
+
+func multiply(data:MarbleData):
+	if data is MarbleInteger:
+		Value *= data.Value
+	return self
+
+func divide(data:MarbleData):
+	if data is MarbleInteger:
+		Value /= data.Value
+	return self
+
+func exponent(data:MarbleData):
+	if data is MarbleInteger:
+		Value = pow(Value, data.Value)
+	return self
+		
+func modolus(data:MarbleData):
+	if data is MarbleInteger:
+		Value = Value % data.Value
+	return self
+
+func And(data:MarbleData):
+	if data is MarbleInteger:
+		return Value == data.Value
+	return self
+	
+func Or(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+
+func equals(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+
+func not_equals(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+	
+func greater_than(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+	
+func greater_than_or_equals(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+	
+func lesser_than(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+	
+func lesser_than_or_equals(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+
+func In(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+
+func negate(data:MarbleData):
+	if data is MarbleInteger:
+		Value += data.Value
+	return self
+

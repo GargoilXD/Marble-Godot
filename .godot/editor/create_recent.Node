@@ -1,0 +1,15 @@
+CodeEdit
+VSeparator
+RichTextLabel
+Panel
+TabContainer
+TabBar
+Node
+Button
+HBoxContainer
+VBoxContainer
+Label
+MarginContainer
+TextureRect
+VSplitContainer
+TextEdit

@@ -1,0 +1,2 @@
+ConfigurationResource
+JSON

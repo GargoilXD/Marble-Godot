@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ConfigurationData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Configurations/ConfigurationData.gd" id="1_1mhnw"]
+
+[resource]
+script = ExtResource("1_1mhnw")
+Code = "#Multiplication by Addition
+Integer A = 785
+Integer B = 800
+
+if (A < B){
+	Variant Temp = A
+	A = B
+	B = (Temp + 0)
+}
+Integer Result = 0
+For (Integer x in Range(B)){
+	Result += A
+}
+Print(A + \" * \" + B + \" =\", Result)"

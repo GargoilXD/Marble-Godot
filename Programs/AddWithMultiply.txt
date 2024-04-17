@@ -1,0 +1,14 @@
+Integer A = 6
+Integer B = 5
+Integer Result = 0
+if (A < B){
+	For Integer i in Range(A){
+		Result += B
+	}
+}
+else{
+	For Integer i in Range(B){
+		Result += A
+	}
+}
+Print(Result)

@@ -102,6 +102,8 @@ func GetOperandVertex():
 	if CurrentToken is DataToken:
 		var Operand:DataVertex = DataVertex.FromToken(CurrentToken)
 		SetNextToken()
+		if CurrentToken.Type == Token.TYPE.LEFT_CIRCLE_BRACKET:
+			return GetFunctionVertex(Operand)
 		return Operand
 	elif CurrentToken.Type == Token.TYPE.LEFT_CIRCLE_BRACKET:
 		SetNextToken()
@@ -196,7 +198,7 @@ func GetUnaryVertex():
 					if UnaryOperator is Error:
 						return UnaryOperator
 					return KeywordVertex.new(Modifier.Keyword, Modifier.Position, {'Modifier':Modifier.TokenValue,'UnaryOperator':UnaryOperator})
-				DataToken.DATATYPE.VARIANT, DataToken.DATATYPE.BOOLEAN, DataToken.DATATYPE.INTEGER, DataToken.DATATYPE.FLOAT, DataToken.DATATYPE.STRING, DataToken.DATATYPE.LIST, DataToken.DATATYPE.DICTIONARY:
+				DataToken.DATATYPE.VARIANT, DataToken.DATATYPE.BOOLEAN, DataToken.DATATYPE.INTEGER, DataToken.DATATYPE.FLOAT, DataToken.DATATYPE.STRING, DataToken.DATATYPE.LIST, DataToken.DATATYPE.DICTIONARY, DataToken.DATATYPE.OBJECT:
 					var DataTypeKeyword:KeywordToken = CurrentToken
 					SetNextToken()
 					var Identifier = GetOperandVertex()
@@ -219,7 +221,7 @@ func GetUnaryVertex():
 					if Data is Error:
 						return Data
 					return BinaryOperatorVertex.new(UnaryOperatorVertex.new(DataTypeKeyword, Identifier), OperatorToken.new(OperatorToken.OPERATORTYPE.ASSIGN), Data)
-				'Break', 'Continue':
+				'Break', 'Continue', 'Breakpoint':
 					var Keyword:KeywordToken = CurrentToken
 					SetNextToken()
 					return KeywordVertex.FromToken(Keyword)
@@ -299,10 +301,11 @@ func GetFunctionVertex(Result):
 	return DataVertex.FromToken(DataToken.new(Type, Position.extend(Parameters.Position), {'Identifier':Result, 'Parameters':Parameters}))
 
 func GetBinaryVertex(function:Callable = func (): pass, operators:Array = []):
+	#breakpoint
 	var Result = function.call()
 	if Result is Error:
 		return Result
-	while CurrentToken.Type in [Token.TYPE.LEFT_SQUARE_BRACKET, Token.TYPE.LEFT_CIRCLE_BRACKET]:
+	while CurrentToken.Type == Token.TYPE.LEFT_SQUARE_BRACKET:
 		if Result is DataVertex and Result.DataType in [DataToken.DATATYPE.IDENTIFIER, DataToken.DATATYPE.STRING, DataToken.DATATYPE.LIST, DataToken.DATATYPE.DICTIONARY, DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.FUNCTION]:
 			Result = GetFunctionVertex(Result)
 		else:

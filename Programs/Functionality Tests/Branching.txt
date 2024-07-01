@@ -1,0 +1,21 @@
+if (I == 1) {
+	Print(x)
+}
+elseif (I or true) {
+	Print(x)
+}
+else {
+	Print(x)
+}
+
+Match I {
+	Case 1{
+		Print(1)
+	},
+	Case 2{
+		Print(2)
+	},
+	Default{
+		Print(3)
+	}
+}

@@ -1,0 +1,21 @@
+Function Integer Multiply(Integer A, Integer B){
+	Integer Result = 0
+	if (A < B){
+		For Integer i in Range(A){
+			
+			Result = Add(Result, B)
+		}
+	}
+	else{
+		For Integer i in Range(B){
+			Result = Add(Result, A)
+		}
+	}
+	Return Result
+}
+
+Function Float Add(Integer A, Integer B){
+	Return A + B
+}
+
+Print(Multiply(10, 20))

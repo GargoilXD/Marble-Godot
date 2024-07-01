@@ -1,2 +1,19 @@
 res://Source code/instruction_processor.tscn
 res://Configurations/Config.tres
+res://Modules/DataStructures/Token/DataToken.gd
+res://Source code/InstructionProcessor.tscn
+res://Modules/Scripts/Tokenizer.gd
+res://Source code/InstructionProcessor.gd
+res://Modules/DataStructures/Token/KeywordToken.gd
+res://Modules/Scripts/Parsers/VertexParser.gd
+res://Modules/DataStructures/Vertex/OperatorVertex/UnaryOperatorVertex.gd
+res://Configurations/ConfigurationData.gd
+res://Programs/Functionality Tests/Variables.txt
+res://Programs/Functionality Tests/Branching.txt
+res://Programs/Functionality Tests/Loops.txt
+res://Programs/Functionality Tests/Classes.txt
+res://Programs/Functionality Tests/Functions.txt
+res://Modules/Scripts/Interpreter.gd
+res://Modules/DataStructures/Error.gd
+res://Modules/DataStructures/IntepreterData/MarbleEnumeration.gd
+res://Modules/DataStructures/IntepreterData/MarbleObject.gd

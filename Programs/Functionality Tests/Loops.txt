@@ -1,0 +1,11 @@
+For (x in [1, 2, 4]) {
+	Print(x)
+	if (x == 2){
+		Break
+	}
+}
+
+Integer x = 0
+While (x < 5) {
+	x += 1
+}

@@ -1,10 +1,10 @@
 class_name Tokenizer
-#const MODIFIER_KEYWORDS:Array = ['Const', 'Static', 'Public', 'Private', 'Void']
-const DATA_KEYWORDS:Array = ['true', 'false']#, 'null', 'self']
-const DATATYPE_KEYWORDS:Array = ['Variant', 'Boolean', 'Integer', 'Float', 'String', 'List', 'Dictionary']#, 'Enumeration']
-const OPERATOR_KEYWORDS:Array = ['not', 'and', 'or', 'in', 'is']#, 'extends']
-const FLOWCONTROL_KEYWORDS:Array = ['Break', 'Continue', 'Return']
-const DECISION_KEYWORDS:Array = ['if', 'else', 'elseif']#, 'Match', 'Case', 'Default']
+const MODIFIER_KEYWORDS:Array = ['Const', 'Static', 'Public', 'Private', 'Void']
+const DATA_KEYWORDS:Array = ['true', 'false', 'null', 'self']
+const DATATYPE_KEYWORDS:Array = ['Variant', 'Boolean', 'Integer', 'Float', 'String', 'List', 'Dictionary', 'Enumeration', 'Object']
+const OPERATOR_KEYWORDS:Array = ['not', 'and', 'or', 'in', 'is', 'extends']
+const FLOWCONTROL_KEYWORDS:Array = ['Break', 'Continue', 'Return', 'Breakpoint']
+const DECISION_KEYWORDS:Array = ['if', 'else', 'elseif', 'Match', 'Case', 'Default']
 const LOOP_KEYWORDS:Array = ['For', 'While']
 const INSTRUCTION_SET_KEYWORDS:Array = ['Class', 'Function']
 const FUNCTION_KEYWORDS:Array = ['Assert', 'Print', 'Range']
@@ -24,7 +24,7 @@ class TokenPositioner:
 	var StartLine:int
 	var EndLine:int
 	
-	func _init():
+	func _init() -> void:
 		Reset()
 
 	func Reset() -> void:
@@ -139,14 +139,14 @@ func MakeLetterToken() -> Token:
 	while Character.to_lower() in LETTERS + NUMBERS:
 		Data += Character
 		SetNextCharacter()
-	#if Data in MODIFIER_KEYWORDS:
-		#match Data:
-			#'Const': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
-			#'Static': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
-			#'Public': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
-			#'Private': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
-			#'Void': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
-	if Data in DATA_KEYWORDS:
+	if Data in MODIFIER_KEYWORDS:
+		match Data:
+			'Const': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
+			'Static': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
+			'Public': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
+			'Private': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
+			'Void': return KeywordToken.new(KeywordToken.KEYWORD.MODIFIER, Positioner.SetEnd(Index, Line, Character), Data)
+	elif Data in DATA_KEYWORDS:
 		match Data:
 			'true': return DataToken.new(DataToken.DATATYPE.BOOLEAN, Positioner.SetEnd(Index, Line, Character), true)
 			'false': return DataToken.new(DataToken.DATATYPE.BOOLEAN, Positioner.SetEnd(Index, Line, Character), false)
@@ -162,6 +162,7 @@ func MakeLetterToken() -> Token:
 			'List': return KeywordToken.new(KeywordToken.KEYWORD.DATATYPE, Positioner.SetEnd(Index, Line, Character), DataToken.DATATYPE.LIST)
 			'Dictionary': return KeywordToken.new(KeywordToken.KEYWORD.DATATYPE, Positioner.SetEnd(Index, Line, Character), DataToken.DATATYPE.DICTIONARY)
 			'Enumeration': return KeywordToken.new(KeywordToken.KEYWORD.DATATYPE, Positioner.SetEnd(Index, Line, Character), DataToken.DATATYPE.ENUMERATION)
+			'Object': return KeywordToken.new(KeywordToken.KEYWORD.DATATYPE, Positioner.SetEnd(Index, Line, Character), DataToken.DATATYPE.OBJECT)
 	elif Data in OPERATOR_KEYWORDS:
 		match Data:
 			'not': return OperatorToken.new(OperatorToken.OPERATORTYPE.NOT, Positioner.SetEnd(Index, Line, Character))
@@ -175,6 +176,7 @@ func MakeLetterToken() -> Token:
 			'Break': return KeywordToken.new(KeywordToken.KEYWORD.FLOWCONTROL, Positioner.SetEnd(Index, Line, Character), Data)
 			'Continue': return KeywordToken.new(KeywordToken.KEYWORD.FLOWCONTROL, Positioner.SetEnd(Index, Line, Character), Data)
 			'Return': return KeywordToken.new(KeywordToken.KEYWORD.FLOWCONTROL, Positioner.SetEnd(Index, Line, Character), Data)
+			'Breakpoint': return KeywordToken.new(KeywordToken.KEYWORD.FLOWCONTROL, Positioner.SetEnd(Index, Line, Character), Data)
 	elif Data in DECISION_KEYWORDS:
 		match Data:
 			'if': return KeywordToken.new(KeywordToken.KEYWORD.DECISION, Positioner.SetEnd(Index, Line, Character), Data)

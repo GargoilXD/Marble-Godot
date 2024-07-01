@@ -1,0 +1,16 @@
+Const Private Variant V = null
+Boolean B = false
+Integer I = 123
+Float F = 0.123
+String S = '0123'
+List L = [0, 1, 2, 3]
+Dictionary D = {
+	'Numbers':[0, 1, 2, 3]
+}
+Enumeration E {
+	ZERO,
+	ONE,
+	TWO,
+	THREE
+}
+Object O = null

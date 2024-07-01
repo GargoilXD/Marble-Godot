@@ -4,17 +4,25 @@
 
 [resource]
 script = ExtResource("1_1mhnw")
-Code = "#Multiplication by Addition
-Integer A = 785
-Integer B = 800
+Code = "Function Integer Multiply(Integer A, Integer B){
+	Integer Result = 0
+	if (A < B){
+		For Integer i in Range(A){
+			
+			Result = Add(Result, B)
+		}
+	}
+	else{
+		For Integer i in Range(B){
+			Result = Add(Result, A)
+		}
+	}
+	Return Result
+}
 
-if (A < B){
-	Variant Temp = A
-	A = B
-	B = (Temp + 0)
+Function Integer Add(Integer A, Integer B){
+	Return A + B
 }
-Integer Result = 0
-For (Integer x in Range(B)){
-	Result += A
-}
-Print(A + \" * \" + B + \" =\", Result)"
+
+Print(Multiply(10, 20))"
+StopAt = 2

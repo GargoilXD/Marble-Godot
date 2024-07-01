@@ -10,8 +10,8 @@ enum DATATYPE{
 	LIST,
 	DICTIONARY,
 	ENUMERATION,
-	IDENTIFIER,
 	OBJECT,
+	IDENTIFIER,
 	SELECTOR,
 	FUNCTION,
 	PARAMETER,
@@ -42,8 +42,10 @@ static func Convert(datatype:String) -> DATATYPE:
 			return DATATYPE.DICTIONARY
 		'Enumeration':
 			return DATATYPE.ENUMERATION
+		'Object':
+			return DATATYPE.OBJECT
 		_:
 			return DATATYPE.NONE
 
-func _to_string() -> String: return '(%s, %s)' % [DATATYPE.keys()[DataType], str(TokenValue)]
+func _to_string() -> String: return '(%s, %s)' % [DATATYPE.keys()[DataType], TokenValue]
 

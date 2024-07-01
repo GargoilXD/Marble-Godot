@@ -1,0 +1,7 @@
+Class Animal{
+	String Name = ''
+}
+
+Class Cat extends Animal{
+	String Age = 0
+}

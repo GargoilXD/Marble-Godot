@@ -17,4 +17,8 @@ func _init(keyword:KEYWORD = KEYWORD.NONE, position:TokenPosition = null, token_
 	Position = position
 	Type = TYPE.KEYWORD
 
-func _to_string() -> String: return '(%s, %s)' % [KEYWORD.keys()[Keyword], str(TokenValue)]
+func _to_string() -> String:
+	match Keyword:
+		KEYWORD.DATATYPE:
+			return '(%s, %s)' % [KEYWORD.keys()[Keyword], DataToken.DATATYPE.keys()[TokenValue]]
+	return '(%s, %s)' % [KEYWORD.keys()[Keyword], TokenValue]

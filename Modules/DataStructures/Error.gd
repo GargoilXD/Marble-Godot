@@ -18,7 +18,8 @@ enum TYPE{
 	CONTINUE,
 	RETURN,
 	INCOMPATIBLE_TYPES,
-	ASSERTION_FAILED
+	ASSERTION_FAILED,
+	MESSAGE
 }
 static var Code:String = ""
 var Type:int = TYPE.NONE

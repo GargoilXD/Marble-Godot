@@ -1,5 +1,5 @@
 ea4bc82a6ad023ab7ee23ee620429895
-::res://::1711708187
+::res://::1719744696
 icon.svg::CompressedTexture2D::7381578193679297836::1694201493::1694201504::1::::<><>::
 ::res://Assets/::1695398310
 ::res://Assets/Fonts/::1710536202
@@ -12,18 +12,18 @@ CascadiaMono.ttf::FontFile::452849220352825744::1684468948::1710536229::1::::<><
 ::res://Assets/Icons/::1709554244
 Marble.png::CompressedTexture2D::3567001206696383243::1709554225::1709554244::1::::<><>::
 Marble.svg::CompressedTexture2D::9096959222134843076::1694422678::1695398316::1::::<><>::
-::res://Configurations/::1711018446
-Config.tres::Resource/ConfigurationData::-1::1711018789::0::1::::<><>::res://Configurations/ConfigurationData.gd
-ConfigurationData.gd::GDScript::-1::1709554380::0::1::::ConfigurationData<>Resource<>::
+::res://Configurations/::1719747124
+Config.tres::Resource/ConfigurationData::-1::1719747592::0::1::::<><>::res://Configurations/ConfigurationData.gd
+ConfigurationData.gd::GDScript::-1::1719746234::0::1::::ConfigurationData<>Resource<>::
 ::res://Modules/::1695399231
 ::res://Modules/DataStructures/::1710509123
 Error.gd::GDScript::-1::1710509123::0::1::::Error<>RefCounted<>::
 ::res://Modules/DataStructures/IntepreterData/::1710838496
 MarbleData.gd::GDScript::-1::1710501016::0::1::::MarbleData<>RefCounted<>::
 MarbleFunction.gd::GDScript::-1::1710838496::0::1::::MarbleFunction<>RefCounted<>::
-::res://Modules/DataStructures/Token/::1710273713
-DataToken.gd::GDScript::-1::1710250110::0::1::::DataToken<>Token<>::
-KeywordToken.gd::GDScript::-1::1710107518::0::1::::KeywordToken<>Token<>::
+::res://Modules/DataStructures/Token/::1719744835
+DataToken.gd::GDScript::-1::1719744655::0::1::::DataToken<>Token<>::
+KeywordToken.gd::GDScript::-1::1719744835::0::1::::KeywordToken<>Token<>::
 OperatorToken.gd::GDScript::-1::1710250110::0::1::::OperatorToken<>Token<>::
 Token.gd::GDScript::-1::1710107672::0::1::::Token<>RefCounted<>::
 TokenPosition.gd::GDScript::-1::1710273713::0::1::::TokenPosition<>RefCounted<>::
@@ -31,25 +31,25 @@ TokenPosition.gd::GDScript::-1::1710273713::0::1::::TokenPosition<>RefCounted<>:
 DataVertex.gd::GDScript::-1::1710837987::0::1::::DataVertex<>Vertex<>::
 KeywordVertex.gd::GDScript::-1::1710185560::0::1::::KeywordVertex<>Vertex<>::
 Vertex.gd::GDScript::-1::1710111392::0::1::::Vertex<>RefCounted<>::
-::res://Modules/DataStructures/Vertex/OperatorVertex/::1710250145
+::res://Modules/DataStructures/Vertex/OperatorVertex/::1719745477
 BinaryOperatorVertex.gd::GDScript::-1::1710191710::0::1::::BinaryOperatorVertex<>OperatorVertex<>::
 OperatorVertex.gd::GDScript::-1::1695469034::0::1::::OperatorVertex<>Vertex<>::
-UnaryOperatorVertex.gd::GDScript::-1::1710250145::0::1::::UnaryOperatorVertex<>OperatorVertex<>::
-::res://Modules/Scripts/::1710839968
+UnaryOperatorVertex.gd::GDScript::-1::1719745477::0::1::::UnaryOperatorVertex<>OperatorVertex<>::
+::res://Modules/Scripts/::1719745954
 Interpreter.gd::GDScript::-1::1710839968::0::1::::Interpreter<>RefCounted<>::
-Tokenizer.gd::GDScript::-1::1710837880::0::1::::Tokenizer<>RefCounted<>::
-::res://Modules/Scripts/Parsers/::1710509408
+Tokenizer.gd::GDScript::-1::1719745954::0::1::::Tokenizer<>RefCounted<>::
+::res://Modules/Scripts/Parsers/::1719744988
 BlockParser.gd::GDScript::-1::1710453114::0::1::::BlockParser<>Parser<>::
 Parser.gd::GDScript::-1::1709671743::0::1::::Parser<>RefCounted<>::
-VertexParser.gd::GDScript::-1::1710509408::0::1::::VertexParser<>Parser<>::
-::res://Programs/::1710783132
+VertexParser.gd::GDScript::-1::1719744988::0::1::::VertexParser<>Parser<>::
+::res://Programs/::1719747604
 AddWithMultiply.txt::TextFile::-1::1710783132::0::1::::<><>::
 Quadder.txt::TextFile::-1::1710536566::0::1::::<><>::
-::res://Source code/::1711018446
-InstructionProcessor.gd::GDScript::-1::1710837800::0::1::::InstructionProcessor<>Control<>::
-instruction_processor.tscn::PackedScene::6262722866170385904::1711018446::0::1::::<><>::uid://4hr26p5bs6v5::::res://Assets/Fonts/SpaceMono-Regular.ttf<>res://Source code/InstructionProcessor.gd<>uid://bq248u8aanbkl::::res://Assets/Icons/Marble.png<>uid://gpmmiy8jepwy::::res://Assets/Fonts/MonoC/CascadiaMono.ttf
-::res://Tests/::1709980670
-QuickTest.gd::GDScript::-1::1694568634::0::1::::<>EditorScript<>::
+::res://Programs/new folder/::1719747604
+::res://Source code/::1719747163
+InstructionProcessor.gd::GDScript::-1::1719747160::0::1::::InstructionProcessor<>Control<>::
+InstructionProcessor.tscn::PackedScene::6262722866170385904::1719747163::0::1::::<><>::uid://4hr26p5bs6v5::::res://Assets/Fonts/SpaceMono-Regular.ttf<>res://Source code/InstructionProcessor.gd<>uid://bq248u8aanbkl::::res://Assets/Icons/Marble.png<>uid://gpmmiy8jepwy::::res://Assets/Fonts/MonoC/CascadiaMono.ttf
+::res://Tests/::1719742520
+QuickTest.gd::GDScript::-1::1719742520::0::1::::<>EditorScript<>::
 SlowTest.gd::GDScript::-1::1709980670::0::1::::<>Node<>::
 slow_test.tscn::PackedScene::6177773622303308138::1695398198::0::1::::<><>::res://Tests/SlowTest.gd
-::res://Utilities/::1695397979

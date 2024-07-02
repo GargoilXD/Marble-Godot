@@ -6,8 +6,8 @@ func _init(type:DataToken.DATATYPE, value = null) -> void:
 	Type = type
 	Value = value
 
-static func FromDataVertex(vertex:DataVertex):
-	return MarbleData.new(vertex.DataType, vertex.VertexValue)
+static func FromDataVertex(vertex:DataVertex) -> MarbleData:
+	return MarbleData.new(vertex.Data_type, vertex.Data)
 
 func _to_string() -> String:
-	return str(Value)
+	return '(%s %s)' % [DataToken.DATATYPE.keys()[Type], Value]

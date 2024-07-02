@@ -1,17 +1,18 @@
 extends Vertex
 class_name DataVertex
-var DataType:DataToken.DATATYPE
-func _init(type:DataToken.DATATYPE, position:TokenPosition, vertex_value):
-	DataType = type
+var Data_type:DataToken.DATATYPE
+var Data
+func _init(type:DataToken.DATATYPE, position:TokenPosition, data) -> void:
+	Data_type = type
 	Position = position
-	VertexValue = vertex_value
+	Data = data
 
 static func FromToken(token:DataToken) -> DataVertex:
 	return DataVertex.new(token.DataType, token.Position, token.TokenValue)
 
 func _to_string() -> String:
-	if DataType == DataToken.DATATYPE.FUNCTION:
-		return '{Subroutine: %s<%s>}' % [str(VertexValue.Identifier), str(VertexValue.Parameters)]
-	if DataType == DataToken.DATATYPE.SELECTOR:
-		return '{Selector: %s<%s>}' % [str(VertexValue.Identifier), str(VertexValue.Parameters)]
-	return '(%s)' % str(VertexValue)
+	if Data_type == DataToken.DATATYPE.FUNCTION:
+		return '{Subroutine: %s<%s>}' % [str(Data.Identifier), str(Data.Parameters)]
+	if Data_type == DataToken.DATATYPE.SELECTOR:
+		return '{Selector: %s<%s>}' % [str(Data.Identifier), str(Data.Parameters)]
+	return '(%s)' % str(Data)

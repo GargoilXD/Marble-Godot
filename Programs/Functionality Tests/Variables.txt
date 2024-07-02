@@ -1,4 +1,4 @@
-Const Private Variant V = null
+Variant V = null
 Boolean B = false
 Integer I = 123
 Float F = 0.123
@@ -13,4 +13,11 @@ Enumeration E {
 	TWO,
 	THREE
 }
-Object O = null
+Print(V)
+Print(B)
+Print(I)
+Print(F)
+Print(S)
+Print(L)
+Print(D)
+Print(E)

@@ -3,11 +3,13 @@ static var Output:String = ''
 
 class Storage:
 	var Parent:Storage = null
+	var Is_root:bool = false
 	var Variables:Dictionary
 	var Functions:Dictionary
-	var function_child:bool = false
+	var for_function:bool = false
 	
-	func _init(variables:Dictionary = {}, functions:Dictionary = {}) -> void:
+	func _init(is_root:bool = false, variables:Dictionary = {}, functions:Dictionary = {}) -> void:
+		Is_root = is_root
 		Variables = variables
 		Functions = functions
 	
@@ -19,7 +21,7 @@ class Storage:
 	func create_function_child(return_type) -> Storage:
 		var child:Storage = get_script().new()
 		child.Functions = Functions
-		child.function_child = true
+		child.for_function = true
 		child.create_variable('Return', MarbleData.new(return_type))
 		return child
 	
@@ -148,7 +150,8 @@ class DataOperator:
 			DataToken.DATATYPE.STRING:
 				match type:
 					DataToken.DATATYPE.BOOLEAN:
-						data.Value = bool(operand.Value)
+						return null
+						#data.Value = bool(operand.Value)
 					DataToken.DATATYPE.INTEGER:
 						data.Value = int(operand.Value)
 					DataToken.DATATYPE.FLOAT:
@@ -1105,7 +1108,7 @@ class DataOperator:
 			return null
 		return data
 
-func InterpreteVertex(vertex:Vertex, StorageObject:Storage):
+func InterpreteVertex(vertex:Vertex, StorageObject:Storage) -> InterpreterOutput:
 	if vertex is BinaryOperatorVertex:
 		return InterpreteBinaryVertex(vertex, StorageObject)
 	elif vertex is UnaryOperatorVertex:
@@ -1114,669 +1117,408 @@ func InterpreteVertex(vertex:Vertex, StorageObject:Storage):
 		return InterpreteKeywordVertex(vertex, StorageObject)
 	elif vertex is DataVertex:
 		return InterpreteDataVertex(vertex, StorageObject)
+	else:
+		breakpoint
+		return null
 
-func InterpreteDataVertex(vertex:DataVertex, StorageObject:Storage):
-	match vertex.DataType:
+func InterpreteDataVertex(vertex:DataVertex, StorageObject:Storage) -> InterpreterOutput:
+	match vertex.Data_type:
 		DataToken.DATATYPE.FUNCTION:
-			if vertex.VertexValue.Identifier is KeywordToken:
-				match vertex.VertexValue.Identifier.TokenValue:
+			if vertex.Data.Identifier is KeywordToken:
+				match vertex.Data.Identifier.TokenValue:
 					'Print':
-						for parameter in vertex.VertexValue.Parameters.VertexValue:
-							var result = InterpreteVertex(parameter, StorageObject)
-							if result is Error:
-								return result
-							Output += str(result.Value) + ' '
+						for parameter:Vertex in vertex.Data.Parameters.Data:
+							var interpreter_output:InterpreterOutput = InterpreteVertex(parameter, StorageObject)
+							if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
+								return interpreter_output
+							Output += str(interpreter_output.Output.Value) + ' '
 						Output += '\n'
+						return InterpreterOutput.Wrap_data(null)
 					'Range':
-						var result = InterpreteVertex(vertex.VertexValue.Parameters.VertexValue[0], StorageObject)
-						if result is Error:
-							return result
+						var interpreter_output:InterpreterOutput = InterpreteVertex(vertex.Data.Parameters.Data[0], StorageObject)
+						if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
+							return interpreter_output
 						var list:Array = []
-						for x in result.Value:
+						for x:int in interpreter_output.Output.Value:
 							list.append(MarbleData.new(DataToken.DATATYPE.INTEGER, x))
-						return MarbleData.new(DataToken.DATATYPE.LIST, list)
+						return interpreter_output.wrap_data(MarbleData.new(DataToken.DATATYPE.LIST, list))
 					'Assert':
-						var result = InterpreteVertex(vertex.VertexValue.Parameters.VertexValue[0], StorageObject)
-						if result is Error:
-							return result
-						if !result.Value:
-							return Error.new(Error.TYPE.ASSERTION_FAILED, vertex.VertexValue.Parameters.Position)
+						var interpreter_output:InterpreterOutput = InterpreteVertex(vertex.Data.Parameters.Data[0], StorageObject)
+						if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
+							return interpreter_output
+						if !interpreter_output.Value:
+							return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.ASSERTION_FAILED, vertex.Data.Parameters.Position))
 					_:
 						breakpoint
-						
-						
 			else:
-				if StorageObject.has_function(vertex.VertexValue.Identifier.VertexValue):
-					var Function:MarbleFunction = StorageObject.get_function(vertex.VertexValue.Identifier.VertexValue)
+				if StorageObject.has_function(vertex.Data.Identifier.Data):
+					var Function:MarbleFunction = StorageObject.get_function(vertex.Data.Identifier.Data)
 					var child_storage_object:Storage = StorageObject.create_function_child(Function.Type)
-					var Parameter:Array = vertex.VertexValue.Parameters.VertexValue
-					for index in Function.Parameters.size():
-						var Argument = InterpreteVertex(Function.Parameters[index], child_storage_object)
-						if Argument is Error:
+					var Parameter:Array = vertex.Data.Parameters.Data
+					for index:int in Function.Parameters.size():
+						var Argument:InterpreterOutput = InterpreteVertex(Function.Parameters[index], child_storage_object)
+						if Argument.Breaker == InterpreterOutput.BREAKER.ERROR:
 							return Argument
 						if index < Parameter.size():
-							var ret = InterpreteVertex(Parameter[index], StorageObject)
-							if ret is Error:
-								return ret
-							Argument.Value = ret.Value
-						elif Argument.Value == null:
+							var input:InterpreterOutput = InterpreteVertex(Parameter[index], StorageObject)
+							if input.Breaker == InterpreterOutput.BREAKER.ERROR:
+								return input
+							Argument.Output.Value = input.Output.Value
+						elif Argument.Output.Value == null:
 							breakpoint
-					var res = Interprete(Function.Instructions, child_storage_object)
-					return res
+					return Interprete(Function.Instructions, child_storage_object)
 				else:
-					return Error.new(Error.TYPE.MESSAGE, vertex.Position, 'Undefined Function')
+					return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Position, 'Undefined Function'))
 		DataToken.DATATYPE.SELECTOR:
-			if vertex.VertexValue.Parameters.VertexValue.size() != 1:
-				return Error.new(Error.TYPE.MESSAGE, vertex.Position, 'What does this mean!?')
-			var Identifier = InterpreteVertex(vertex.VertexValue.Identifier, StorageObject)
-			if Identifier is Error:
-				return Identifier
+			var Parameters:Array = vertex.Data.Parameters.Data
+			if Parameters.size() != 1:
+				return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Position, 'What does this mean!?'))
+			var interpreter_output:InterpreterOutput = InterpreteVertex(vertex.Data.Identifier, StorageObject)
+			if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
+				return interpreter_output
+			var Identifier:MarbleData = interpreter_output.Output
 			if Identifier.Type == DataToken.DATATYPE.VARIANT:
 				Identifier.Type = DataOperator.get_raw_datatype(Identifier.Value)
+			var interpreter_output_1:InterpreterOutput = InterpreteVertex(Parameters[0], StorageObject)
+			if interpreter_output_1.Breaker == InterpreterOutput.BREAKER.ERROR:
+				return interpreter_output_1
+			var result:MarbleData = interpreter_output_1.Output
 			match Identifier.Type:
 				DataToken.DATATYPE.LIST:
-					var result = InterpreteVertex(vertex.VertexValue.Parameters.VertexValue[0], StorageObject)
-					if result is Error:
-						return result
 					if result.Type != DataToken.DATATYPE.INTEGER:
-						return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.VertexValue.Parameters.VertexValue[0].Position)
+						return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.INCOMPATIBLE_TYPES, Parameters[0].Position))
 					if result.Value >= Identifier.Value.size():
-						return Error.new(Error.TYPE.UNDEFINED_IDENTIFIER, vertex.Position)
-					var Value = Identifier.Value[result.Value]
-					return MarbleData.new(DataOperator.get_raw_datatype(Value), Value)
+						return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.UNDEFINED_IDENTIFIER, vertex.Position))
+					return InterpreterOutput.Wrap_data(Identifier.Value[result.Value])
 				DataToken.DATATYPE.DICTIONARY:
-					var result = InterpreteVertex(vertex.VertexValue.Parameters.VertexValue[0], StorageObject)
-					if result is Error:
-						return result
 					if !Identifier.Value.has(result.Value):
-						return Error.new(Error.TYPE.UNDEFINED_IDENTIFIER, vertex.Position)
+						return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.UNDEFINED_IDENTIFIER, vertex.Position))
 					var Value = Identifier.Value[result.Value]
-					return MarbleData.new(DataOperator.get_raw_datatype(Value), Value)
+					return InterpreterOutput.Wrap_data(MarbleData.new(DataOperator.get_raw_datatype(Value), Value))
 				DataToken.DATATYPE.STRING:
-					var result = InterpreteVertex(vertex.VertexValue.Parameters.VertexValue[0], StorageObject)
-					if result is Error:
-						return result
 					if result.Type != DataToken.DATATYPE.INTEGER:
-						return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.VertexValue.Parameters.VertexValue[0].Position)
+						return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.INCOMPATIBLE_TYPES, Parameters[0].Position))
 					if result.Value >= Identifier.Value.length():
-						return Error.new(Error.TYPE.UNDEFINED_IDENTIFIER, vertex.Position)
-					return MarbleData.new(DataToken.DATATYPE.STRING, Identifier.Value[result.Value])
+						return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.UNDEFINED_IDENTIFIER, vertex.Position))
+					return InterpreterOutput.Wrap_data(MarbleData.new(DataToken.DATATYPE.STRING, Identifier.Value[result.Value]))
 				_:
 					breakpoint
 		DataToken.DATATYPE.IDENTIFIER:
-			if StorageObject.has_variable(vertex.VertexValue):
-				var MarbleDataObject:MarbleData = StorageObject.get_variable(vertex.VertexValue)
+			if StorageObject.has_variable(vertex.Data):
+				var MarbleDataObject:MarbleData = StorageObject.get_variable(vertex.Data)
 				if MarbleDataObject.Type != DataToken.DATATYPE.VARIANT and MarbleDataObject.Value == null:
-					return Error.new(Error.TYPE.UNINITIALIZED_IDENTIFIER, vertex.Position)
-				return MarbleDataObject
+					if vertex.Data != 'Return':
+						return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.UNINITIALIZED_IDENTIFIER, vertex.Position))
+				return InterpreterOutput.Wrap_data(MarbleDataObject)
 			else:
-				return Error.new(Error.TYPE.UNDEFINED_IDENTIFIER, vertex.Position)
+				return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.UNDEFINED_IDENTIFIER, vertex.Position))
 		DataToken.DATATYPE.INSTRUCTIONS:
-			if vertex.VertexValue.size() == 1:
-				return InterpreteVertex(vertex.VertexValue[0], StorageObject)
+			breakpoint
+			if vertex.Data.size() == 1:
+				return InterpreteVertex(vertex.Data[0], StorageObject)
 			else:
 				print(vertex)
 				breakpoint
 		DataToken.DATATYPE.LIST:
 			var Data:Array = []
-			for item:Vertex in vertex.VertexValue:
-				var res = InterpreteVertex(item, StorageObject)
-				if res is Error:
-					return res
-				res.Type = DataToken.DATATYPE.VARIANT
-				Data.append(res)
-			return MarbleData.new(DataToken.DATATYPE.LIST, Data)
+			for item:Vertex in vertex.Data:
+				var interpreter_output:InterpreterOutput = InterpreteVertex(item, StorageObject)
+				if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
+					return interpreter_output
+				interpreter_output.Output.Type = DataToken.DATATYPE.VARIANT
+				Data.append(interpreter_output.Output)
+			return InterpreterOutput.Wrap_data(MarbleData.new(DataToken.DATATYPE.LIST, Data))
 		DataToken.DATATYPE.DICTIONARY:
 			var Data:Dictionary = {}
-			for item:Vertex in vertex.VertexValue:
-				var res = InterpreteVertex(item, StorageObject)
-				if res is Error:
-					return res
-				Data.merge(res.Value, true)
-			return MarbleData.new(DataToken.DATATYPE.DICTIONARY, Data)
+			for item:Vertex in vertex.Data:
+				var interpreter_output:InterpreterOutput = InterpreteVertex(item, StorageObject)
+				if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
+					return interpreter_output
+				Data.merge(interpreter_output.Output.Value, true)
+			return InterpreterOutput.Wrap_data(MarbleData.new(DataToken.DATATYPE.DICTIONARY, Data))
 		_:
-			return MarbleData.FromDataVertex(vertex)
+			return InterpreterOutput.Wrap_data(MarbleData.FromDataVertex(vertex))
+	return null
 
-func InterpreteBinaryVertex(vertex:BinaryOperatorVertex, StorageObject:Storage):
+
+func Binary_operation(vertex:BinaryOperatorVertex, operation:Callable, StorageObject:Storage) -> InterpreterOutput:
+	var Left:InterpreterOutput = InterpreteVertex(vertex.Left, StorageObject)
+	if Left.Breaker == InterpreterOutput.BREAKER.ERROR:
+		return Left
+	var Right:InterpreterOutput = InterpreteVertex(vertex.Right, StorageObject)
+	if Right.Breaker == InterpreterOutput.BREAKER.ERROR:
+		return Right
+	var Result:MarbleData = operation.call(Left.Output, Right.Output)
+	if Result == null:
+		return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.Position))
+	return InterpreterOutput.Wrap_data(Result)
+
+func Assign_operation(vertex:BinaryOperatorVertex, StorageObject:Storage, operation = null) -> InterpreterOutput:
+	if vertex.Left is DataVertex:
+		if not vertex.Left.Data_type in [DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.IDENTIFIER]:
+			Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Left.Position)
+	
+	var Left:InterpreterOutput = InterpreteVertex(vertex.Left, StorageObject)
+	if Left.Breaker == InterpreterOutput.BREAKER.ERROR:
+		return Left
+	if Left.Output.Type == DataToken.DATATYPE.ENUMERATION:
+		Left.Output.Value = MarbleEnumeration.new()
+		for index:int in vertex.Right.Data.size():
+			Left.Output.Value.Value[vertex.Right.Data[index].Data] = index
+		return Left
+	var Right:InterpreterOutput = InterpreteVertex(vertex.Right, StorageObject)
+	if Right.Breaker == InterpreterOutput.BREAKER.ERROR:
+		return Right
+	if Left.Output.Type == DataToken.DATATYPE.VARIANT:
+		Left.Output.Value = Right.Output.Value
+	else:
+		if Left.Output.Type == Right.Output.Type:
+			if operation:
+				Left.Output.Value = operation.call(Left.Output, Right.Output).Value
+			else:
+				Left.Output.Value = Right.Output.Value
+		else:
+			var converted_data:MarbleData = DataOperator.try_convert(Right.Output, Left.Output.Type)
+			if converted_data == null:
+				return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.Right.Position))
+			else:
+				if operation:
+					Left.Output.Value = operation.call(Left.Output, Right.Output).Value
+				else:
+					Left.Output.Value = Right.Output.Value
+	return Left
+
+func InterpreteBinaryVertex(vertex:BinaryOperatorVertex, StorageObject:Storage) -> InterpreterOutput:
 	match vertex.Operator.OperatorType:
 		OperatorToken.OPERATORTYPE.DOT:
 			print(vertex)
 			breakpoint
 		OperatorToken.OPERATORTYPE.ADD:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			var Result:MarbleData = DataOperator.add(Left, Right)
-			if !Result:
-				return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.Position)
-			return Result
+			return Binary_operation(vertex, DataOperator.add, StorageObject)
 		OperatorToken.OPERATORTYPE.SUBTRACT:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			var Result:MarbleData = DataOperator.subtract(Left, Right)
-			if !Result:
-				return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.Position)
-			return Result
+			return Binary_operation(vertex, DataOperator.subtract, StorageObject)
 		OperatorToken.OPERATORTYPE.MULTIPLY:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			var Result:MarbleData = DataOperator.multiply(Left, Right)
-			if !Result:
-				return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.Position)
-			return Result
+			return Binary_operation(vertex, DataOperator.multiply, StorageObject)
 		OperatorToken.OPERATORTYPE.DIVIDE:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			if Right.Type in [DataToken.DATATYPE.INTEGER, DataToken.DATATYPE.FLOAT]:
-				if float(Right.Value) == 0:
-					return Error.new(Error.TYPE.DIVISION_BY_ZERO, vertex.VertexValue.right.Position)
-			var Result:MarbleData = DataOperator.divide(Left, Right)
-			if !Result:
-				return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.Position)
-			return Result
+			return Binary_operation(vertex, DataOperator.divide, StorageObject)
 		OperatorToken.OPERATORTYPE.EXPONENT:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			var Result:MarbleData = DataOperator.exponent(Left, Right)
-			if !Result:
-				return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.Position)
-			return Result
+			return Binary_operation(vertex, DataOperator.exponent, StorageObject)
 		OperatorToken.OPERATORTYPE.MODOLUS:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			var Result:MarbleData = DataOperator.modolus(Left, Right)
-			if !Result:
-				return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.Position)
-			return Result
+			return Binary_operation(vertex, DataOperator.modolus, StorageObject)
 		OperatorToken.OPERATORTYPE.AND:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			return DataOperator.And(Left, Right)
+			return Binary_operation(vertex, DataOperator.And, StorageObject)
 		OperatorToken.OPERATORTYPE.OR:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			return DataOperator.Or(Left, Right)
+			return Binary_operation(vertex, DataOperator.Or, StorageObject)
 		OperatorToken.OPERATORTYPE.IN:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			var Result:MarbleData = DataOperator.is_in(Left, Right)
-			if !Result:
-				return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, vertex.Position)
-			return Result
+			return Binary_operation(vertex, DataOperator.is_in, StorageObject)
 		OperatorToken.OPERATORTYPE.EQUALS:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			return DataOperator.equals(Left, Right)
+			return Binary_operation(vertex, DataOperator.equals, StorageObject)
 		OperatorToken.OPERATORTYPE.NOT_EQUALS:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			return DataOperator.not_equals(Left, Right)
+			return Binary_operation(vertex, DataOperator.not_equals, StorageObject)
 		OperatorToken.OPERATORTYPE.GREATER_THAN:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			return DataOperator.greater_than(Left, Right)
+			return Binary_operation(vertex, DataOperator.greater_than, StorageObject)
 		OperatorToken.OPERATORTYPE.GREATER_THAN_OR_EQUALS:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			return DataOperator.greater_than_or_equals(Left, Right)
+			return Binary_operation(vertex, DataOperator.greater_than_or_equals, StorageObject)
 		OperatorToken.OPERATORTYPE.LESSER_THAN:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			return DataOperator.lesser_than(Left, Right)
+			return Binary_operation(vertex, DataOperator.lesser_than, StorageObject)
 		OperatorToken.OPERATORTYPE.LESSER_THAN_OR_EQUALS:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			return DataOperator.lesser_than_or_equals(Left, Right)
+			return Binary_operation(vertex, DataOperator.lesser_than_or_equals, StorageObject)
 		OperatorToken.OPERATORTYPE.ASSIGN:
-			if vertex.VertexValue.left is DataVertex:
-				if not vertex.VertexValue.left.DataType in [DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.IDENTIFIER]:
-					Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.VertexValue.left.Position)
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			if Left.Type == DataToken.DATATYPE.ENUMERATION:
-				Left.Value = MarbleEnumeration.new()
-				for index:int in vertex.VertexValue.right.VertexValue.size():
-					Left.Value.Value[vertex.VertexValue.right.VertexValue[index].VertexValue] = index
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			if Left.Type == DataToken.DATATYPE.VARIANT:
-				Left.Value = Right.Value
-			else:
-				if Left.Type == Right.Type:
-					Left.Value = Right.Value
-				else:
-					var conv = DataOperator.try_convert(Right, Left.Type)
-					if conv:
-						if Left.Type == DataToken.DATATYPE.OBJECT:
-							Left.Value = MarbleObject.new(null)
-						else:
-							Left.Value = conv.Value
-					else:
-						return Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.VertexValue.right.Position)
-			return Left
+			return Assign_operation(vertex, StorageObject)
 		OperatorToken.OPERATORTYPE.ADD_AND_ASSIGN:
-			if vertex.VertexValue.left is DataVertex:
-				if not vertex.VertexValue.left.DataType in [DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.IDENTIFIER]:
-					Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.VertexValue.left.Position)
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			if Left.Type == DataToken.DATATYPE.VARIANT:
-				var Result:MarbleData = DataOperator.add(Left, Right)
-				if !Result:
-					return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, Right.Position)
-				Left.Value = Result.Value
-			else:
-				if Left.Type == Right.Type:
-					Left.Value = DataOperator.add(Left, Right).Value
-				else:
-					var conv = DataOperator.try_convert(Right, Left.Type)
-					if conv:
-						Left.Value = DataOperator.add(Left, conv).Value
-					else:
-						return Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.VertexValue.right.Position)
-			return Left
+			return Assign_operation(vertex, StorageObject, DataOperator.add)
 		OperatorToken.OPERATORTYPE.SUBTRACT_AND_ASSIGN:
-			if vertex.VertexValue.left is DataVertex:
-				if not vertex.VertexValue.left.DataType in [DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.IDENTIFIER]:
-					Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.VertexValue.left.Position)
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			if Left.Type == DataToken.DATATYPE.VARIANT:
-				var Result:MarbleData = DataOperator.subtract(Left, Right)
-				if !Result:
-					return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, Right.Position)
-				Left.Value = Result.Value
-			else:
-				if Left.Type == Right.Type:
-					Left.Value = DataOperator.subtract(Left, Right).Value
-				else:
-					var conv = DataOperator.try_convert(Right, Left.Type)
-					if conv:
-						Left.Value = DataOperator.subtract(Left, conv).Value
-					else:
-						return Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.VertexValue.right.Position)
-			return Left
+			return Assign_operation(vertex, StorageObject, DataOperator.subtract)
 		OperatorToken.OPERATORTYPE.MULTIPLY_AND_ASSIGN:
-			if vertex.VertexValue.left is DataVertex:
-				if not vertex.VertexValue.left.DataType in [DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.IDENTIFIER]:
-					Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.VertexValue.left.Position)
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			if Left.Type == DataToken.DATATYPE.VARIANT:
-				var Result:MarbleData = DataOperator.multiply(Left, Right)
-				if !Result:
-					return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, Right.Position)
-				Left.Value = Result.Value
-			else:
-				if Left.Type == Right.Type:
-					Left.Value = DataOperator.multiply(Left, Right).Value
-				else:
-					var conv = DataOperator.try_convert(Right, Left.Type)
-					if conv:
-						Left.Value = DataOperator.multiply(Left, conv).Value
-					else:
-						return Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.VertexValue.right.Position)
-			return Left
+			return Assign_operation(vertex, StorageObject, DataOperator.multiply)
 		OperatorToken.OPERATORTYPE.DIVIDE_AND_ASSIGN:
-			if vertex.VertexValue.left is DataVertex:
-				if not vertex.VertexValue.left.DataType in [DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.IDENTIFIER]:
-					Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.VertexValue.left.Position)
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			if Right.Type in [DataToken.DATATYPE.INTEGER, DataToken.DATATYPE.FLOAT]:
-				if float(Right.Value) == 0:
-					return Error.new(Error.TYPE.DIVISION_BY_ZERO, vertex.VertexValue.right.Position)
-			if Left.Type == DataToken.DATATYPE.VARIANT:
-				var Result:MarbleData = DataOperator.divide(Left, Right)
-				if !Result:
-					return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, Right.Position)
-				Left.Value = Result.Value
-			else:
-				if Left.Type == Right.Type:
-					Left.Value = DataOperator.divide(Left, Right).Value
-				else:
-					var conv = DataOperator.try_convert(Right, Left.Type)
-					if conv:
-						Left.Value = DataOperator.divide(Left, conv).Value
-					else:
-						return Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.VertexValue.right.Position)
-			return Left
+			return Assign_operation(vertex, StorageObject, DataOperator.divide)
 		OperatorToken.OPERATORTYPE.EXPONENT_AND_ASSIGN:
-			if vertex.VertexValue.left is DataVertex:
-				if not vertex.VertexValue.left.DataType in [DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.IDENTIFIER]:
-					Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.VertexValue.left.Position)
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			if Left.Type == DataToken.DATATYPE.VARIANT:
-				var Result:MarbleData = DataOperator.exponent(Left, Right)
-				if !Result:
-					return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, Right.Position)
-				Left.Value = Result.Value
-			else:
-				if Left.Type == Right.Type:
-					Left.Value = DataOperator.exponent(Left, Right).Value
-				else:
-					var conv = DataOperator.try_convert(Right, Left.Type)
-					if conv:
-						Left.Value = DataOperator.exponent(Left, conv).Value
-					else:
-						return Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.VertexValue.right.Position)
-			return Left
+			return Assign_operation(vertex, StorageObject, DataOperator.exponent)
 		OperatorToken.OPERATORTYPE.MODOLUS_AND_ASSIGN:
-			if vertex.VertexValue.left is DataVertex:
-				if not vertex.VertexValue.left.DataType in [DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.IDENTIFIER]:
-					Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.VertexValue.left.Position)
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
-				return Left
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
-				return Right
-			if Left.Type == DataToken.DATATYPE.VARIANT:
-				var Result:MarbleData = DataOperator.modolus(Left, Right)
-				if !Result:
-					return Error.new(Error.TYPE.INCOMPATIBLE_TYPES, Right.Position)
-				Left.Value = Result.Value
-			else:
-				if Left.Type == Right.Type:
-					Left.Value = DataOperator.modolus(Left, Right).Value
-				else:
-					var conv = DataOperator.try_convert(Right, Left.Type)
-					if conv:
-						Left.Value = DataOperator.modolus(Left, conv).Value
-					else:
-						return Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.VertexValue.right.Position)
-			return Left
+			return Assign_operation(vertex, StorageObject, DataOperator.modolus)
 		OperatorToken.OPERATORTYPE.COLON:
-			var Left = InterpreteVertex(vertex.VertexValue.left, StorageObject)
-			if Left is Error:
+			var Left:InterpreterOutput = InterpreteVertex(vertex.Left, StorageObject)
+			if Left.Breaker == InterpreterOutput.BREAKER.ERROR:
 				return Left
-			if Left.Type in [DataToken.DATATYPE.LIST, DataToken.DATATYPE.DICTIONARY, DataToken.DATATYPE.OBJECT]:
-				return Error.new(Error.TYPE.MESSAGE, vertex.VertexValue.left.Position, 'Invalid Key')
-			var Right = InterpreteVertex(vertex.VertexValue.right, StorageObject)
-			if Right is Error:
+			if Left.Output.Type in [DataToken.DATATYPE.LIST, DataToken.DATATYPE.DICTIONARY, DataToken.DATATYPE.OBJECT]:
+				return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Left.Position, 'Invalid Key'))
+			var Right:InterpreterOutput = InterpreteVertex(vertex.Right, StorageObject)
+			if Right.Breaker == InterpreterOutput.BREAKER.ERROR:
 				return Right
-			return MarbleData.new(DataToken.DATATYPE.DICTIONARY, {Left.Value : Right.Value})
+			return InterpreterOutput.Wrap_data(MarbleData.new(DataToken.DATATYPE.DICTIONARY, {Left.Output.Value : Right.Output.Value}))
 		OperatorToken.OPERATORTYPE.RUNS:
 			var child_storage_object:Storage = StorageObject.create_child()
-			match vertex.VertexValue.left.Operator.TokenValue:
+			match vertex.Left.Operator.TokenValue:
 				'Function':
-					var Type:DataToken.DATATYPE = vertex.VertexValue.left.VertexValue.Operator.TokenValue
-					var Name:String = vertex.VertexValue.left.VertexValue.VertexValue.VertexValue.Identifier.VertexValue
-					var Parameters:Array = vertex.VertexValue.left.VertexValue.VertexValue.VertexValue.Parameters.VertexValue
-					var Instructions:Array = vertex.VertexValue.right.VertexValue.instructions
+					var Type:DataToken.DATATYPE = vertex.Left.Operand.Operator.TokenValue
+					var Name:String = vertex.Left.Operand.Operand.Data.Identifier.Data
+					var Parameters:Array = vertex.Left.Operand.Operand.Data.Parameters.Data
+					var Instructions:Array = vertex.Right.Data.instructions
 					StorageObject.create_function(Name, MarbleFunction.new(Type, Name, Parameters, Instructions))
 				'if':
-					var if_key = InterpreteVertex(vertex.VertexValue.left.VertexValue, child_storage_object)
-					if if_key is Error:
-						return if_key
-					if if_key.Value:
-						var res = Interprete(vertex.VertexValue.right.VertexValue.instructions, child_storage_object)
-						if res is Error:
-							return res
+					var if_condition:InterpreterOutput = InterpreteVertex(vertex.Left.Operand, child_storage_object)
+					if if_condition.Breaker == InterpreterOutput.BREAKER.ERROR:
+						return if_condition
+					if if_condition.Output.Type != DataToken.DATATYPE.BOOLEAN:
+						if_condition.Output = DataOperator.try_convert(if_condition.Output, DataToken.DATATYPE.BOOLEAN)
+						if if_condition.Output == null:
+							return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.Left.Operand.Position))
+					if if_condition.Output.Value:
+						return Interprete(vertex.Right.Data.instructions, child_storage_object)
 					else:
-						var else_ifs:Array = vertex.VertexValue.right.VertexValue.else_ifs
-						var else_if_instructions = null
-						for else_if:BinaryOperatorVertex in else_ifs:
-							var else_if_key = InterpreteVertex(else_if.VertexValue.left.VertexValue, child_storage_object)
-							if else_if_key is Error:
+						var else_if_conditions:Array = vertex.Right.Data.else_ifs
+						var else_if_instruction = null
+						for else_if_condition:BinaryOperatorVertex in else_if_conditions:
+							var else_if_key:InterpreterOutput = InterpreteVertex(else_if_condition.Left.Operand, child_storage_object)
+							if else_if_key.Breaker == InterpreterOutput.BREAKER.ERROR:
 								return else_if_key
-							if else_if_key.Value:
-								else_if_instructions = else_if.VertexValue.right.VertexValue.instructions
+							if else_if_key.Output.Value:
+								else_if_instruction = else_if_condition.Right.Data.instructions
 								break
-						if else_if_instructions:
-							var res = Interprete(else_if_instructions, child_storage_object)
-							if res is Error:
-								return res
+						if else_if_instruction:
+							return Interprete(else_if_instruction, child_storage_object)
 						else:
-							var else_ = vertex.VertexValue.right.VertexValue.else
-							if else_:
-								var res = Interprete(else_.VertexValue.instructions, child_storage_object)
-								if res is Error:
-									return res
+							if vertex.Right.Data.else:
+								return Interprete(vertex.Right.Data.else.Data.instructions, child_storage_object)
 				'For':
-					var IN:BinaryOperatorVertex = vertex.VertexValue.left.VertexValue
-					if IN.Operator.OperatorType != OperatorToken.OPERATORTYPE.IN:
-						return Error.new(Error.TYPE.UNEXPECTED_OPERAND, IN.Operator.Position)
-					var make_var = InterpreteUnaryVertex(IN.VertexValue.left, child_storage_object)
-					if make_var is Error:
-						return make_var
-					var List = InterpreteDataVertex(IN.VertexValue.right, child_storage_object)
-					if List is Error:
-						return List
-					for x in List.Value:
-						make_var.Value = x
-						###
-						var res = Interprete(vertex.VertexValue.right.VertexValue.instructions, child_storage_object)
-						if res is Error:
-							match res.Type:
-								Error.TYPE.BREAK:
-									break
-								Error.TYPE.CONTINUE:
-									continue
-								Error.TYPE.RETURN:
-									breakpoint
-							return res
-				'While':
-					var while_key = InterpreteVertex(vertex.VertexValue.left.VertexValue, child_storage_object)
-					if while_key is Error:
-						return while_key
-					while while_key.Value:
-						var res = Interprete(vertex.VertexValue.right.VertexValue.instructions, child_storage_object)
-						while_key = InterpreteVertex(vertex.VertexValue.left.VertexValue, child_storage_object)
-						if while_key is Error:
-							return while_key
-						if res is Error:
-							match res.Type:
-								Error.TYPE.BREAK:
-									break
-								Error.TYPE.CONTINUE:
-									continue
-								Error.TYPE.RETURN:
-									breakpoint
-							return res
-				'Match':
-					var match_value = InterpreteVertex(vertex.VertexValue.left.VertexValue, child_storage_object)
-					if match_value is Error:
-						return match_value
-					var instructions = null
-					for case in vertex.VertexValue.right.VertexValue.instructions:
-						if case.VertexValue.left.VertexValue is String:
-							instructions = case.VertexValue.right.VertexValue.instructions
-							break
-						else:
-							if case.VertexValue.left.VertexValue.VertexValue == match_value.Value:
-								instructions = case.VertexValue.right.VertexValue.instructions
+					var IN:BinaryOperatorVertex = vertex.Left.Operand
+					var get_variable:InterpreterOutput = InterpreteVertex(IN.Left, child_storage_object)
+					if get_variable.Breaker == InterpreterOutput.BREAKER.ERROR:
+						return get_variable
+					var Iteratable:InterpreterOutput = InterpreteDataVertex(IN.Right, child_storage_object)
+					if Iteratable.Breaker == InterpreterOutput.BREAKER.ERROR:
+						return Iteratable
+					#Lists only
+					if Iteratable.Output.Type != DataToken.DATATYPE.LIST:
+						return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, IN.Right.Position, 'Lists Only!'))
+					for data:MarbleData in Iteratable.Output.Value:
+						get_variable.Output.Value = data.Value
+						var interpreter_output:InterpreterOutput = Interprete(vertex.Right.Data.instructions, child_storage_object)
+						match interpreter_output.Breaker:
+							InterpreterOutput.BREAKER.BREAK:
 								break
-					var res = Interprete(instructions, child_storage_object)
-					if res is Error:
-						return res
+							InterpreterOutput.BREAKER.CONTINUE, InterpreterOutput.BREAKER.NONE:
+								continue
+							InterpreterOutput.BREAKER.RETURN, InterpreterOutput.BREAKER.ERROR:
+								return interpreter_output
+				'While':
+					var while_condition:InterpreterOutput = InterpreteVertex(vertex.Left.Operand, child_storage_object)
+					if while_condition.Breaker == InterpreterOutput.BREAKER.ERROR:
+						return while_condition
+					while while_condition.Output.Value:
+						var interpreter_output:InterpreterOutput = Interprete(vertex.Right.Data.instructions, child_storage_object)
+						match interpreter_output.Breaker:
+							InterpreterOutput.BREAKER.BREAK:
+								break
+							InterpreterOutput.BREAKER.CONTINUE, InterpreterOutput.BREAKER.NONE:
+								while_condition = InterpreteVertex(vertex.Left.Operand, child_storage_object)
+								if while_condition.Breaker == InterpreterOutput.BREAKER.ERROR:
+									return while_condition
+							InterpreterOutput.BREAKER.RETURN, InterpreterOutput.BREAKER.ERROR:
+								return interpreter_output
+						
+				#'Match':
+					#var match_value = InterpreteVertex(vertex.Left.VertexValue, child_storage_object)
+					#if match_value is Error:
+						#return match_value
+					#var instructions = null
+					#for case in vertex.Right.VertexValue.instructions:
+						#if case.Left.VertexValue is String:
+							#instructions = case.Right.VertexValue.instructions
+							#break
+						#else:
+							#if case.Left.VertexValue.VertexValue == match_value.Value:
+								#instructions = case.Right.VertexValue.instructions
+								#break
+					#var res = Interprete(instructions, child_storage_object)
+					#if res is Error:
+						#return res
 				_:
 					breakpoint
 		_:
 			print(vertex)
 			breakpoint
+	return InterpreterOutput.new(InterpreterOutput.BREAKER.NONE)
 
-func InterpreteUnaryVertex(vertex:UnaryOperatorVertex, StorageObject:Storage):
+func InterpreteUnaryVertex(vertex:UnaryOperatorVertex, StorageObject:Storage) -> InterpreterOutput:
 	if vertex.Operator is OperatorToken:
 		match vertex.Operator.OperatorType:
-			OperatorToken.OPERATORTYPE.NOT:
-				var Operand = InterpreteVertex(vertex.VertexValue, StorageObject)
-				if Operand is Error:
-					return Operand
-				return DataOperator.negate(Operand)
-			OperatorToken.OPERATORTYPE.SUBTRACT:
-				var Operand = InterpreteVertex(vertex.VertexValue, StorageObject)
-				if Operand is Error:
-					return Operand
-				return DataOperator.negate(Operand)
+			OperatorToken.OPERATORTYPE.NOT, OperatorToken.OPERATORTYPE.SUBTRACT:
+				var interpreter_output:InterpreterOutput = InterpreteVertex(vertex.Operand, StorageObject)
+				if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
+					return interpreter_output
+				return interpreter_output.wrap_data(DataOperator.negate(interpreter_output.Output))
 			OperatorToken.OPERATORTYPE.ADD:
-				var Operand = InterpreteVertex(vertex.VertexValue, StorageObject)
-				if Operand is Error:
-					return Operand
-				return Operand
+				return InterpreteVertex(vertex.Operand, StorageObject)
 			_:
 				print(vertex)
 				breakpoint
-				return Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Position)
+				return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Position))
 	elif vertex.Operator is KeywordToken:
 		match vertex.Operator.TokenValue:
 			DataToken.DATATYPE.VARIANT, DataToken.DATATYPE.BOOLEAN, DataToken.DATATYPE.INTEGER, DataToken.DATATYPE.FLOAT, DataToken.DATATYPE.STRING, DataToken.DATATYPE.LIST, DataToken.DATATYPE.DICTIONARY, DataToken.DATATYPE.ENUMERATION, DataToken.DATATYPE.OBJECT:
-				if StorageObject.has_variable(vertex.VertexValue.VertexValue):
-					return Error.new(Error.TYPE.ALREADY_DEFINED_IDENTIFIER, vertex.Position)
+				if StorageObject.has_variable(vertex.Operand.Data):
+					return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.ALREADY_DEFINED_IDENTIFIER, vertex.Position))
 				else:
-					return StorageObject.create_variable(vertex.VertexValue.VertexValue, MarbleData.new(vertex.Operator.TokenValue))
+					return InterpreterOutput.Wrap_data(StorageObject.create_variable(vertex.Operand.Data, MarbleData.new(vertex.Operator.TokenValue)))
 			'Return':
-				if StorageObject.function_child:#StorageObject.Parent and StorageObject.has_variable('Return'):
-					var ret = InterpreteVertex(vertex.VertexValue, StorageObject)
-					if ret is Error:
-						return ret
-					var Left = StorageObject.get_variable('Return')
-					var Right = ret
-					if Left.Type == DataToken.DATATYPE.VARIANT:
-						Left.Value = Right.Value
-					else:
-						if Left.Type == Right.Type:
-							Left.Value = Right.Value
-						else:
-							var conv = DataOperator.try_convert(Right, Left.Type)
-							if conv:
-								if Left.Type == DataToken.DATATYPE.OBJECT:
-									Left.Value = MarbleObject.new(null)
-								else:
-									Left.Value = conv.Value
-							else:
-								return Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.VertexValue.Position)
-					return Error.new(Error.TYPE.RETURN, vertex.Position)
+				if StorageObject.has_variable('Return'):
+					return Assign_operation(BinaryOperatorVertex.new(DataVertex.new(DataToken.DATATYPE.IDENTIFIER, null, 'Return'), OperatorToken.new(), vertex.Operand), StorageObject)
 				else:
-					return Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Operator.Position)
-			_:
-				print(vertex)
-				breakpoint
-				return Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Position)
+					return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Operator.Position, 'You can only do this in a function'))
+	print(vertex)
+	breakpoint
+	return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Position))
 
-func InterpreteKeywordVertex(vertex:KeywordVertex, StorageObject:Storage):
-	match vertex.Keyword:
+func InterpreteKeywordVertex(vertex:KeywordVertex, _StorageObject:Storage) -> InterpreterOutput:
+	match vertex.Keyword_type:
+		KeywordToken.KEYWORD.MODIFIER:
+			breakpoint
+		KeywordToken.KEYWORD.DATATYPE:
+			breakpoint
 		KeywordToken.KEYWORD.FLOWCONTROL:
-			match vertex.VertexValue:
+			match vertex.Keyword:
 				'Break':
-					if StorageObject.Parent:
-						return Error.new(Error.TYPE.BREAK, vertex.Position)
-					else:
-						return Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Position)
+					return InterpreterOutput.new(InterpreterOutput.BREAKER.BREAK)
 				'Continue':
-					if StorageObject.Parent:
-						return Error.new(Error.TYPE.CONTINUE, vertex.Position)
-					else:
-						return Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Position)
+					return InterpreterOutput.new(InterpreterOutput.BREAKER.CONTINUE)
 				'Breakpoint':
+					breakpoint
+				'Return':
 					breakpoint
 				_:
 					breakpoint
+		KeywordToken.KEYWORD.DECISION:
+			breakpoint
+		KeywordToken.KEYWORD.LOOP:
+			breakpoint
+		KeywordToken.KEYWORD.INSTRUCTION_SET:
+			breakpoint
+		KeywordToken.KEYWORD.FUNCTION:
+			breakpoint
+	return null
 
-func Interprete(Parsed:Array, StorageObject:Storage = Storage.new()):
-	for vertex in Parsed:
-		if not StorageObject.Parent:
-			#print(vertex)
-			pass
-		var Result = InterpreteVertex(vertex, StorageObject)
-		if Result is Error:
-			if StorageObject.Parent or StorageObject.function_child:
-				match Result.Type:
-					Error.TYPE.BREAK, Error.TYPE.CONTINUE:
-						breakpoint
-					Error.TYPE.RETURN:
-						return StorageObject.get_variable('Return')
-				return Result
-			else:
-				match Result.Type:
-					Error.TYPE.BREAK, Error.TYPE.CONTINUE, Error.TYPE.RETURN:
-						return Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Position)
-					_:
-						return Result
+func Interprete(Parsed:Array, StorageObject:Storage = Storage.new(true)) -> InterpreterOutput:
+	for vertex:Vertex in Parsed:
+		var interpreter_output:InterpreterOutput = InterpreteVertex(vertex, StorageObject)
+		match interpreter_output.Breaker:
+			InterpreterOutput.BREAKER.NONE:
+				continue
+			InterpreterOutput.BREAKER.BREAK, InterpreterOutput.BREAKER.CONTINUE:
+				if StorageObject.Is_root or StorageObject.for_function:
+					return interpreter_output.wrap_error(Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Position))
+				return interpreter_output
+			InterpreterOutput.BREAKER.RETURN:
+				if StorageObject.Is_root or StorageObject.for_function:
+					return interpreter_output.wrap_error(Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Position))
+				return interpreter_output
+			InterpreterOutput.BREAKER.ERROR:
+				return interpreter_output
+	if StorageObject.Is_root:
+		return InterpreterOutput.new(InterpreterOutput.BREAKER.NONE, Output)
+	elif StorageObject.for_function:
+		return InterpreterOutput.new(InterpreterOutput.BREAKER.NONE, StorageObject.get_variable('Return'))
+	else:
+		return InterpreterOutput.new(InterpreterOutput.BREAKER.NONE)
 		
-	if not StorageObject.Parent:
-		print(StorageObject)
-	return Output

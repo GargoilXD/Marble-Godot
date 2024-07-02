@@ -1,0 +1,25 @@
+List Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+Function Integer Sum(List Numbers) {
+	Integer Summation = 0
+	For Integer number in Numbers {
+		Summation += number
+	}
+	Return Summation
+}
+Function String Replace_letter(String Input, String Target, String Replacer) {
+	String Result = ''
+	For String letter in Input {
+		if (letter == Target){
+			Result += Replacer
+		}
+		else{
+			Result += letter
+		}
+	}
+	Return Result
+}
+
+Integer Result = Sum(Numbers)
+Print(Result)
+Print(Replace_letter('Emme', 'm', 'w'))

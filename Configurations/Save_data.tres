@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SaveData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Configurations/SaveData.gd" id="1_75tjt"]
+
+[resource]
+script = ExtResource("1_75tjt")
+Stop_at = 2
+Code = "Variant D = 9
+Integer Number = 0
+Integer Xo = 0
+List X = [314,431,'54356',Integer Y = 7]
+Print(X) 
+Y = 10
+Print(X) "

@@ -29,8 +29,9 @@ folder_colors={
 "res://Assets/": "orange",
 "res://Configurations/": "yellow",
 "res://Modules/": "red",
-"res://Source code/": "red",
-"res://Tests/": "pink"
+"res://Programs/": "gray",
+"res://Source code/": "purple",
+"res://Tests/": "blue"
 }
 
 [filesystem]

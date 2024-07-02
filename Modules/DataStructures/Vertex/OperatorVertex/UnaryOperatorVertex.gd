@@ -1,11 +1,12 @@
 extends OperatorVertex
 class_name UnaryOperatorVertex
-func _init(operator_token:Token, vertex_value:Vertex):
+var Operand:Vertex
+func _init(operator_token:Token, operand:Vertex):
 	Operator = operator_token
-	VertexValue = vertex_value
+	Operand = operand
 
 func _to_string():
-	var value = VertexValue.VertexValue if VertexValue is DataVertex and not VertexValue.DataType in [DataToken.DATATYPE.FUNCTION, DataToken.DATATYPE.SELECTOR] else VertexValue
+	#var value = Operand.VertexValue if Operand is DataVertex and not Operand.DataType in [DataToken.DATATYPE.FUNCTION, DataToken.DATATYPE.SELECTOR] else Operand
 	var operator
 	if Operator.Type == Token.TYPE.OPERATOR:
 		operator = OperatorToken.OPERATORTYPE.keys()[Operator.OperatorType]
@@ -13,5 +14,5 @@ func _to_string():
 		operator = DataToken.DATATYPE.keys()[Operator.TokenValue]
 	else:
 		operator = Operator.TokenValue
-	return '(%s, %s)' % [str(operator), str(value)]
+	return '(%s, %s)' % [str(operator), str(Operand)]
 

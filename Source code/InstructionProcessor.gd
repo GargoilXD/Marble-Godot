@@ -1,71 +1,82 @@
 extends Control
 class_name InstructionProcessor
-@export var Config:ConfigurationData = preload("res://Configurations/Config.tres")
+enum DISPLAY{
+	TOKENIZER,
+	PARSER,
+	INTERPRETER
+}
+@export var Save_data:SaveData = preload("res://Configurations/Save_data.tres")
 @onready var Editor:CodeEdit = $Panel/MarginContainer/VBoxContainer/VSplitContainer/CodeEdit
-@onready var Display:Array[RichTextLabel] = [
+@onready var Tab:TabContainer = $Panel/MarginContainer/VBoxContainer/VSplitContainer/VBoxContainer/TabContainer
+@onready var Option_button:OptionButton = $Panel/MarginContainer/VBoxContainer/VSplitContainer/VBoxContainer/HBoxContainer/OptionButton
+@onready var Displays:Array[RichTextLabel] = [
 	$Panel/MarginContainer/VBoxContainer/VSplitContainer/VBoxContainer/TabContainer/Tokenizer/RichTextLabel,
 	$Panel/MarginContainer/VBoxContainer/VSplitContainer/VBoxContainer/TabContainer/Parser/RichTextLabel,
 	$Panel/MarginContainer/VBoxContainer/VSplitContainer/VBoxContainer/TabContainer/Interpreter/RichTextLabel
 ]
-@onready var Tab:TabContainer = $Panel/MarginContainer/VBoxContainer/VSplitContainer/VBoxContainer/TabContainer
-@onready var option_button: OptionButton = $Panel/MarginContainer/VBoxContainer/VSplitContainer/VBoxContainer/HBoxContainer/OptionButton
-
-var StopAt:int = 2
-var TokenizerObject:Tokenizer = Tokenizer.new()
-var ParserObject:VertexParser = VertexParser.new()
-var InterpreterObject:Interpreter = Interpreter.new()
-var Result = null
+var Tokenizer_object:Tokenizer = Tokenizer.new()
+var Parser_object:Parser = Parser.new()
+var Interpreter_object:Interpreter = Interpreter.new()
+var Stop_at:DISPLAY
 
 func Run() -> void:
-	# Tokenize
-	var tokens = TokenizerObject.Tokenize(Editor.text)
-	Result = tokens
+	#region Tokenize
+	var tokens = Tokenizer_object.Tokenize(Editor.text)
 	if tokens is Error:
-		Display[0].append_text(str(tokens))
-		Display[0].newline()
-		Tab.current_tab = 0
+		Display_data(DISPLAY.TOKENIZER, tokens)
+		Tab.current_tab = DISPLAY.TOKENIZER
 		return
 	else:
-		var Parsed:String = ""
+		var output:String = ''
 		for token:Token in tokens:
-			Parsed += str(token) + ', '
+			output += str(token) + ', '
 			if token.Type == Token.TYPE.END_OF_LINE:
-				Parsed += '\n'
-		Display[0].append_text(str(Parsed))
-		Display[0].newline()
-		if StopAt == 0:
-			Tab.current_tab = 0
+				output += '\n'
+		Display_data(DISPLAY.TOKENIZER, output.trim_suffix(', '))
+		if Stop_at == DISPLAY.TOKENIZER:
+			Tab.current_tab = DISPLAY.TOKENIZER
 			return
-	# Parse
-	var vertexes = ParserObject.Parse(tokens)
-	Result = vertexes
+	#endregion
+	#region Parse
+	var vertexes = Parser_object.Parse(tokens)
 	if vertexes is Error:
-		Display[1].append_text(str(vertexes))
-		Display[1].newline()
-		Tab.current_tab = 1
+		Display_data(DISPLAY.PARSER, vertexes)
+		Tab.current_tab = DISPLAY.PARSER
 		return
 	else:
-		var Parsed:String = ""
+		var output:String = ''
 		for vertex:Vertex in vertexes:
-			Parsed += str(vertex) + '\n'
-		Display[1].append_text(str(Parsed))
-		Display[1].newline()
-		if StopAt == 1:
-			Tab.current_tab = 1
+			output += str(vertex) + '\n'
+		Display_data(DISPLAY.PARSER, output)
+		if Stop_at == DISPLAY.PARSER:
+			Tab.current_tab = DISPLAY.PARSER
 			return
-	# Interprete
+	#endregion
+	#region Interprete
 	Interpreter.Output = ''
-	var output = InterpreterObject.Interprete(vertexes)
-	Result = output
-	Display[2].append_text(str(output))
-	Display[2].newline()
-	Tab.current_tab = 2
+	var Output:String = ''
+	var interpreter_output:InterpreterOutput = Interpreter_object.Interprete(vertexes)
+	match interpreter_output.Breaker:
+		InterpreterOutput.BREAKER.NONE:
+			Output = str(interpreter_output.Output)
+		InterpreterOutput.BREAKER.BREAK, InterpreterOutput.BREAKER.CONTINUE, InterpreterOutput.BREAKER.RETURN:
+			breakpoint
+		InterpreterOutput.BREAKER.ERROR:
+			Output = str(interpreter_output.Error_object)
+	Display_data(DISPLAY.INTERPRETER, Output)
+	Tab.current_tab = DISPLAY.INTERPRETER
+	#endregion
+
+func Display_data(display:DISPLAY, data) -> void:
+	Displays[display].append_text(str(data))
+	Displays[display].newline()
 
 func _ready() -> void:
-	Editor.text = Config.Code
-	StopAt = Config.StopAt
-	Tab.current_tab = StopAt
-	option_button.select(StopAt)
+	Editor.text = Save_data.Code
+	Stop_at = Save_data.Stop_at
+	Tab.current_tab = Stop_at
+	Option_button.select(Stop_at)
+	#region Highlighter
 	var Highlighter:CodeHighlighter = CodeHighlighter.new()
 	Highlighter.number_color = Color.LIGHT_GREEN
 	Highlighter.symbol_color = Color.AQUA
@@ -95,21 +106,23 @@ func _ready() -> void:
 	Highlighter.add_color_region("'", "'", Color.GREEN_YELLOW)
 	Highlighter.add_color_region('#', '', Color.DIM_GRAY, true)
 	Editor.syntax_highlighter = Highlighter
+	#endregion
 
-func _process(_delta:float) -> void:
-	if Input.is_action_just_pressed("Save"):
-		Config.Code = Editor.text
-		Config.StopAt = StopAt
-		var State:int = ResourceSaver.save(Config, 'res://Configurations/Config.tres')
+func _input(event:InputEvent) -> void:
+	if event.is_action_pressed('Save'):
+		Save_data.Code = Editor.text
+		Save_data.Stop_at = Stop_at
+		var State:int = ResourceSaver.save(Save_data, 'res://Configurations/Save_data.tres')
 		if State == OK:
-			Display[StopAt].append_text("Save Successful")
-			Display[StopAt].newline()
+			Displays[Stop_at].append_text('Save Successful')
+			Displays[Stop_at].newline()
 		else:
-			Display[StopAt].append_text("Save Failed")
-			Display[StopAt].newline()
+			Displays[Stop_at].append_text('Save Failed')
+			Displays[Stop_at].newline()
 
 func _on_run_pressed() -> void:
-	if Editor.text != '':
+	if !Editor.text.is_empty():
+		Error.Code = Editor.text
 		Run()
 
 func _on_pause_pressed() -> void:
@@ -119,9 +132,9 @@ func _on_stop_pressed() -> void:
 	pass # Replace with function body.
 
 func _on_clear_pressed() -> void:
-	for x in Display:
-		x.clear()
+	for Display:RichTextLabel in Displays:
+		Display.clear()
 
-func _on_option_button_item_selected(index: int) -> void:
-	StopAt = index
-	Tab.current_tab = StopAt
+func _on_option_button_item_selected(index:int) -> void:
+	Stop_at = index as DISPLAY
+	Tab.current_tab = Stop_at

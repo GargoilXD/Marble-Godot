@@ -1,7 +1,9 @@
-if (I == 1) {
+Integer I = 0
+String x = 'LOL'
+if (I == 0) {
 	Print(x)
 }
-elseif (I or true) {
+elseif (I == 1) {
 	Print(x)
 }
 else {

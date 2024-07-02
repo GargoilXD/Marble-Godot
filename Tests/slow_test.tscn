@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://cuata8q30wep3"]
-
-[ext_resource type="Script" path="res://Tests/SlowTest.gd" id="1_yt32c"]
-
-[node name="SlowTest" type="Node"]
-script = ExtResource("1_yt32c")

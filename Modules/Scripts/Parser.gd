@@ -293,7 +293,7 @@ func get_unary_vertex():
 					if instructions is Error:
 						return instructions
 					return BinaryOperatorVertex.new(unary, OperatorToken.new(OperatorToken.OPERATORTYPE.RUNS), instructions)
-				'Print', 'Range', 'Assert':
+				'Print', 'Range', 'Assert', 'Random', 'Input':
 					var keyword:KeywordToken = CurrentToken
 					next_token()
 					if CurrentToken.Type == Token.TYPE.LEFT_CIRCLE_BRACKET:

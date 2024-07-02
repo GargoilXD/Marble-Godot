@@ -1,1 +1,4 @@
 res://Source code/InstructionProcessor.tscn
+res://Configurations/Save_data.tres
+res://Modules/Scripts/Interpreter.gd
+res://Programs/GuessingGame.txt

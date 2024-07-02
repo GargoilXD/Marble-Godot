@@ -265,6 +265,29 @@ scroll_following = true
 context_menu_enabled = true
 selection_enabled = true
 
+[node name="AcceptDialog" type="AcceptDialog" parent="."]
+title = "Input"
+initial_position = 1
+size = Vector2i(375, 120)
+dialog_text = "Enter Input"
+
+[node name="MarginContainer" type="MarginContainer" parent="AcceptDialog"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 367.0
+offset_bottom = 69.0
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 5
+
+[node name="VBoxContainer" type="VBoxContainer" parent="AcceptDialog/MarginContainer"]
+layout_mode = 2
+alignment = 2
+
+[node name="LineEdit" type="LineEdit" parent="AcceptDialog/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
 [connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/MarginContainer/HBoxContainer/HBoxContainer/Run" to="." method="_on_run_pressed"]
 [connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/MarginContainer/HBoxContainer/HBoxContainer/Pause" to="." method="_on_pause_pressed"]
 [connection signal="pressed" from="Panel/MarginContainer/VBoxContainer/MarginContainer/HBoxContainer/HBoxContainer/Stop" to="." method="_on_stop_pressed"]

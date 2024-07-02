@@ -8,7 +8,7 @@ const FLOWCONTROL_KEYWORDS:Array = ['Break', 'Continue', 'Return', 'Breakpoint']
 const DECISION_KEYWORDS:Array = ['if', 'else', 'elseif', 'Match', 'Case', 'Default']
 const LOOP_KEYWORDS:Array = ['For', 'While']
 const INSTRUCTION_SET_KEYWORDS:Array = ['Class', 'Function']
-const FUNCTION_KEYWORDS:Array = ['Assert', 'Print', 'Range']
+const FUNCTION_KEYWORDS:Array = ['Assert', 'Print', 'Range', 'Random', 'Input']
 const LETTERS:Array = ['q','w','e','r','t','y','u','i','o','p','a','s','d','f','g','h','j','k','l','z','x','c','v','b','n','m','_']
 const NUMBERS:Array = ['1','2','3','4','5','6','7','8','9','0']
 const OPERATOR_CHARACTERS:Array = ['!','+','-','*','/','^','%','=','<','>',':','.','&','|']
@@ -196,6 +196,8 @@ func Make_letter_token() -> Token:
 			'Assert': return KeywordToken.new(KeywordToken.KEYWORD.FUNCTION, Positioner.set_end(Index, Line, Character), data)
 			'Print': return KeywordToken.new(KeywordToken.KEYWORD.FUNCTION, Positioner.set_end(Index, Line, Character), data)
 			'Range': return KeywordToken.new(KeywordToken.KEYWORD.FUNCTION, Positioner.set_end(Index, Line, Character), data)
+			'Random': return KeywordToken.new(KeywordToken.KEYWORD.FUNCTION, Positioner.set_end(Index, Line, Character), data)
+			'Input': return KeywordToken.new(KeywordToken.KEYWORD.FUNCTION, Positioner.set_end(Index, Line, Character), data)
 	return DataToken.new(DataToken.DATATYPE.IDENTIFIER, Positioner.set_end(Index, Line, Character), data)
 
 func Make_operator_token():

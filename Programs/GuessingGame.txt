@@ -1,11 +1,4 @@
-[gd_resource type="Resource" script_class="SaveData" load_steps=2 format=3 uid="uid://pakspc78itsp"]
-
-[ext_resource type="Script" path="res://Configurations/SaveData.gd" id="1_75tjt"]
-
-[resource]
-script = ExtResource("1_75tjt")
-Stop_at = 2
-Code = "Function List Make_random_sample(Integer Size, Integer lower, Integer upper) {
+Function List Make_random_sample(Integer Size, Integer lower, Integer upper) {
 	List sample = Range(Size)
 	For Integer x in Range(Size) {
 		sample[x] = Random(lower, upper)
@@ -40,4 +33,3 @@ For Integer x in Range(Size) {
 Print('The computer chose:', Output_list(Computer_numbers))
 Print('You chose:', Output_list(Responses))
 Print('There were', number_matched, 'Matches')
-"

@@ -1,5 +1,6 @@
 class_name Interpreter
 static var Output:String = ''
+var PopUp_input:AcceptDialog
 
 class Storage:
 	var Parent:Storage = null
@@ -1110,13 +1111,13 @@ class DataOperator:
 
 func InterpreteVertex(vertex:Vertex, StorageObject:Storage) -> InterpreterOutput:
 	if vertex is BinaryOperatorVertex:
-		return InterpreteBinaryVertex(vertex, StorageObject)
+		return await InterpreteBinaryVertex(vertex, StorageObject)
 	elif vertex is UnaryOperatorVertex:
-		return InterpreteUnaryVertex(vertex, StorageObject)
+		return await InterpreteUnaryVertex(vertex, StorageObject)
 	elif vertex is KeywordVertex:
 		return InterpreteKeywordVertex(vertex, StorageObject)
 	elif vertex is DataVertex:
-		return InterpreteDataVertex(vertex, StorageObject)
+		return await InterpreteDataVertex(vertex, StorageObject)
 	else:
 		breakpoint
 		return null
@@ -1128,14 +1129,14 @@ func InterpreteDataVertex(vertex:DataVertex, StorageObject:Storage) -> Interpret
 				match vertex.Data.Identifier.TokenValue:
 					'Print':
 						for parameter:Vertex in vertex.Data.Parameters.Data:
-							var interpreter_output:InterpreterOutput = InterpreteVertex(parameter, StorageObject)
+							var interpreter_output:InterpreterOutput = await InterpreteVertex(parameter, StorageObject)
 							if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
 								return interpreter_output
 							Output += str(interpreter_output.Output.Value) + ' '
 						Output += '\n'
 						return InterpreterOutput.Wrap_data(null)
 					'Range':
-						var interpreter_output:InterpreterOutput = InterpreteVertex(vertex.Data.Parameters.Data[0], StorageObject)
+						var interpreter_output:InterpreterOutput = await InterpreteVertex(vertex.Data.Parameters.Data[0], StorageObject)
 						if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
 							return interpreter_output
 						var list:Array = []
@@ -1143,11 +1144,35 @@ func InterpreteDataVertex(vertex:DataVertex, StorageObject:Storage) -> Interpret
 							list.append(MarbleData.new(DataToken.DATATYPE.INTEGER, x))
 						return interpreter_output.wrap_data(MarbleData.new(DataToken.DATATYPE.LIST, list))
 					'Assert':
-						var interpreter_output:InterpreterOutput = InterpreteVertex(vertex.Data.Parameters.Data[0], StorageObject)
+						var interpreter_output:InterpreterOutput = await InterpreteVertex(vertex.Data.Parameters.Data[0], StorageObject)
 						if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
 							return interpreter_output
-						if !interpreter_output.Value:
+						if !interpreter_output.Output.Value:
 							return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.ASSERTION_FAILED, vertex.Data.Parameters.Position))
+						return InterpreterOutput.Wrap_data(InterpreterOutput.BREAKER.NONE)
+					'Random':
+						if vertex.Data.Parameters.Data.size() > 2:
+							return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Data.Parameters.Position, 'Too many parameters'))
+						var paramters:Array = []
+						for parameter:Vertex in vertex.Data.Parameters.Data:
+							var interpreter_output:InterpreterOutput = await InterpreteVertex(parameter, StorageObject)
+							if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
+								return interpreter_output
+							paramters.append(interpreter_output.Output)
+						randomize()
+						return InterpreterOutput.Wrap_data(MarbleData.new(DataToken.DATATYPE.INTEGER, randi_range(paramters[0].Value, paramters[1].Value)))
+					'Input':
+						if vertex.Data.Parameters.Data.size() > 1:
+							return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Data.Parameters.Position, 'Too many parameters'))
+						var interpreter_output:InterpreterOutput = await InterpreteVertex(vertex.Data.Parameters.Data[0], StorageObject)
+						if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
+							return interpreter_output
+						PopUp_input.dialog_text = str(interpreter_output.Output.Value)
+						PopUp_input.show()
+						PopUp_input.get_node('MarginContainer/VBoxContainer/LineEdit').text = ''
+						await PopUp_input.confirmed
+						var PopUp_response = PopUp_input.get_node('MarginContainer/VBoxContainer/LineEdit').text
+						return InterpreterOutput.Wrap_data(MarbleData.new(DataToken.DATATYPE.STRING, PopUp_response))
 					_:
 						breakpoint
 			else:
@@ -1156,30 +1181,30 @@ func InterpreteDataVertex(vertex:DataVertex, StorageObject:Storage) -> Interpret
 					var child_storage_object:Storage = StorageObject.create_function_child(Function.Type)
 					var Parameter:Array = vertex.Data.Parameters.Data
 					for index:int in Function.Parameters.size():
-						var Argument:InterpreterOutput = InterpreteVertex(Function.Parameters[index], child_storage_object)
+						var Argument:InterpreterOutput = await InterpreteVertex(Function.Parameters[index], child_storage_object)
 						if Argument.Breaker == InterpreterOutput.BREAKER.ERROR:
 							return Argument
 						if index < Parameter.size():
-							var input:InterpreterOutput = InterpreteVertex(Parameter[index], StorageObject)
+							var input:InterpreterOutput = await InterpreteVertex(Parameter[index], StorageObject)
 							if input.Breaker == InterpreterOutput.BREAKER.ERROR:
 								return input
 							Argument.Output.Value = input.Output.Value
 						elif Argument.Output.Value == null:
-							breakpoint
-					return Interprete(Function.Instructions, child_storage_object)
+							return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Position, 'Missing parameter'))
+					return await Interprete(Function.Instructions, child_storage_object)
 				else:
 					return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Position, 'Undefined Function'))
 		DataToken.DATATYPE.SELECTOR:
 			var Parameters:Array = vertex.Data.Parameters.Data
 			if Parameters.size() != 1:
 				return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Position, 'What does this mean!?'))
-			var interpreter_output:InterpreterOutput = InterpreteVertex(vertex.Data.Identifier, StorageObject)
+			var interpreter_output:InterpreterOutput = await InterpreteVertex(vertex.Data.Identifier, StorageObject)
 			if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
 				return interpreter_output
 			var Identifier:MarbleData = interpreter_output.Output
 			if Identifier.Type == DataToken.DATATYPE.VARIANT:
 				Identifier.Type = DataOperator.get_raw_datatype(Identifier.Value)
-			var interpreter_output_1:InterpreterOutput = InterpreteVertex(Parameters[0], StorageObject)
+			var interpreter_output_1:InterpreterOutput = await InterpreteVertex(Parameters[0], StorageObject)
 			if interpreter_output_1.Breaker == InterpreterOutput.BREAKER.ERROR:
 				return interpreter_output_1
 			var result:MarbleData = interpreter_output_1.Output
@@ -1215,14 +1240,14 @@ func InterpreteDataVertex(vertex:DataVertex, StorageObject:Storage) -> Interpret
 		DataToken.DATATYPE.INSTRUCTIONS:
 			breakpoint
 			if vertex.Data.size() == 1:
-				return InterpreteVertex(vertex.Data[0], StorageObject)
+				return await InterpreteVertex(vertex.Data[0], StorageObject)
 			else:
 				print(vertex)
 				breakpoint
 		DataToken.DATATYPE.LIST:
 			var Data:Array = []
 			for item:Vertex in vertex.Data:
-				var interpreter_output:InterpreterOutput = InterpreteVertex(item, StorageObject)
+				var interpreter_output:InterpreterOutput = await InterpreteVertex(item, StorageObject)
 				if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
 					return interpreter_output
 				interpreter_output.Output.Type = DataToken.DATATYPE.VARIANT
@@ -1231,7 +1256,7 @@ func InterpreteDataVertex(vertex:DataVertex, StorageObject:Storage) -> Interpret
 		DataToken.DATATYPE.DICTIONARY:
 			var Data:Dictionary = {}
 			for item:Vertex in vertex.Data:
-				var interpreter_output:InterpreterOutput = InterpreteVertex(item, StorageObject)
+				var interpreter_output:InterpreterOutput = await InterpreteVertex(item, StorageObject)
 				if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
 					return interpreter_output
 				Data.merge(interpreter_output.Output.Value, true)
@@ -1242,10 +1267,10 @@ func InterpreteDataVertex(vertex:DataVertex, StorageObject:Storage) -> Interpret
 
 
 func Binary_operation(vertex:BinaryOperatorVertex, operation:Callable, StorageObject:Storage) -> InterpreterOutput:
-	var Left:InterpreterOutput = InterpreteVertex(vertex.Left, StorageObject)
+	var Left:InterpreterOutput = await InterpreteVertex(vertex.Left, StorageObject)
 	if Left.Breaker == InterpreterOutput.BREAKER.ERROR:
 		return Left
-	var Right:InterpreterOutput = InterpreteVertex(vertex.Right, StorageObject)
+	var Right:InterpreterOutput = await InterpreteVertex(vertex.Right, StorageObject)
 	if Right.Breaker == InterpreterOutput.BREAKER.ERROR:
 		return Right
 	var Result:MarbleData = operation.call(Left.Output, Right.Output)
@@ -1258,7 +1283,7 @@ func Assign_operation(vertex:BinaryOperatorVertex, StorageObject:Storage, operat
 		if not vertex.Left.Data_type in [DataToken.DATATYPE.SELECTOR, DataToken.DATATYPE.IDENTIFIER]:
 			Error.new(Error.TYPE.UNEXPECTED_TOKEN, vertex.Left.Position)
 	
-	var Left:InterpreterOutput = InterpreteVertex(vertex.Left, StorageObject)
+	var Left:InterpreterOutput = await InterpreteVertex(vertex.Left, StorageObject)
 	if Left.Breaker == InterpreterOutput.BREAKER.ERROR:
 		return Left
 	if Left.Output.Type == DataToken.DATATYPE.ENUMERATION:
@@ -1266,7 +1291,7 @@ func Assign_operation(vertex:BinaryOperatorVertex, StorageObject:Storage, operat
 		for index:int in vertex.Right.Data.size():
 			Left.Output.Value.Value[vertex.Right.Data[index].Data] = index
 		return Left
-	var Right:InterpreterOutput = InterpreteVertex(vertex.Right, StorageObject)
+	var Right:InterpreterOutput = await InterpreteVertex(vertex.Right, StorageObject)
 	if Right.Breaker == InterpreterOutput.BREAKER.ERROR:
 		return Right
 	if Left.Output.Type == DataToken.DATATYPE.VARIANT:
@@ -1294,56 +1319,56 @@ func InterpreteBinaryVertex(vertex:BinaryOperatorVertex, StorageObject:Storage) 
 			print(vertex)
 			breakpoint
 		OperatorToken.OPERATORTYPE.ADD:
-			return Binary_operation(vertex, DataOperator.add, StorageObject)
+			return await Binary_operation(vertex, DataOperator.add, StorageObject)
 		OperatorToken.OPERATORTYPE.SUBTRACT:
-			return Binary_operation(vertex, DataOperator.subtract, StorageObject)
+			return await Binary_operation(vertex, DataOperator.subtract, StorageObject)
 		OperatorToken.OPERATORTYPE.MULTIPLY:
-			return Binary_operation(vertex, DataOperator.multiply, StorageObject)
+			return await Binary_operation(vertex, DataOperator.multiply, StorageObject)
 		OperatorToken.OPERATORTYPE.DIVIDE:
-			return Binary_operation(vertex, DataOperator.divide, StorageObject)
+			return await Binary_operation(vertex, DataOperator.divide, StorageObject)
 		OperatorToken.OPERATORTYPE.EXPONENT:
-			return Binary_operation(vertex, DataOperator.exponent, StorageObject)
+			return await Binary_operation(vertex, DataOperator.exponent, StorageObject)
 		OperatorToken.OPERATORTYPE.MODOLUS:
-			return Binary_operation(vertex, DataOperator.modolus, StorageObject)
+			return await Binary_operation(vertex, DataOperator.modolus, StorageObject)
 		OperatorToken.OPERATORTYPE.AND:
-			return Binary_operation(vertex, DataOperator.And, StorageObject)
+			return await Binary_operation(vertex, DataOperator.And, StorageObject)
 		OperatorToken.OPERATORTYPE.OR:
-			return Binary_operation(vertex, DataOperator.Or, StorageObject)
+			return await Binary_operation(vertex, DataOperator.Or, StorageObject)
 		OperatorToken.OPERATORTYPE.IN:
-			return Binary_operation(vertex, DataOperator.is_in, StorageObject)
+			return await Binary_operation(vertex, DataOperator.is_in, StorageObject)
 		OperatorToken.OPERATORTYPE.EQUALS:
-			return Binary_operation(vertex, DataOperator.equals, StorageObject)
+			return await Binary_operation(vertex, DataOperator.equals, StorageObject)
 		OperatorToken.OPERATORTYPE.NOT_EQUALS:
-			return Binary_operation(vertex, DataOperator.not_equals, StorageObject)
+			return await Binary_operation(vertex, DataOperator.not_equals, StorageObject)
 		OperatorToken.OPERATORTYPE.GREATER_THAN:
-			return Binary_operation(vertex, DataOperator.greater_than, StorageObject)
+			return await Binary_operation(vertex, DataOperator.greater_than, StorageObject)
 		OperatorToken.OPERATORTYPE.GREATER_THAN_OR_EQUALS:
-			return Binary_operation(vertex, DataOperator.greater_than_or_equals, StorageObject)
+			return await Binary_operation(vertex, DataOperator.greater_than_or_equals, StorageObject)
 		OperatorToken.OPERATORTYPE.LESSER_THAN:
-			return Binary_operation(vertex, DataOperator.lesser_than, StorageObject)
+			return await Binary_operation(vertex, DataOperator.lesser_than, StorageObject)
 		OperatorToken.OPERATORTYPE.LESSER_THAN_OR_EQUALS:
-			return Binary_operation(vertex, DataOperator.lesser_than_or_equals, StorageObject)
+			return await Binary_operation(vertex, DataOperator.lesser_than_or_equals, StorageObject)
 		OperatorToken.OPERATORTYPE.ASSIGN:
-			return Assign_operation(vertex, StorageObject)
+			return await Assign_operation(vertex, StorageObject)
 		OperatorToken.OPERATORTYPE.ADD_AND_ASSIGN:
-			return Assign_operation(vertex, StorageObject, DataOperator.add)
+			return await Assign_operation(vertex, StorageObject, DataOperator.add)
 		OperatorToken.OPERATORTYPE.SUBTRACT_AND_ASSIGN:
-			return Assign_operation(vertex, StorageObject, DataOperator.subtract)
+			return await Assign_operation(vertex, StorageObject, DataOperator.subtract)
 		OperatorToken.OPERATORTYPE.MULTIPLY_AND_ASSIGN:
-			return Assign_operation(vertex, StorageObject, DataOperator.multiply)
+			return await Assign_operation(vertex, StorageObject, DataOperator.multiply)
 		OperatorToken.OPERATORTYPE.DIVIDE_AND_ASSIGN:
-			return Assign_operation(vertex, StorageObject, DataOperator.divide)
+			return await Assign_operation(vertex, StorageObject, DataOperator.divide)
 		OperatorToken.OPERATORTYPE.EXPONENT_AND_ASSIGN:
-			return Assign_operation(vertex, StorageObject, DataOperator.exponent)
+			return await Assign_operation(vertex, StorageObject, DataOperator.exponent)
 		OperatorToken.OPERATORTYPE.MODOLUS_AND_ASSIGN:
-			return Assign_operation(vertex, StorageObject, DataOperator.modolus)
+			return await Assign_operation(vertex, StorageObject, DataOperator.modolus)
 		OperatorToken.OPERATORTYPE.COLON:
-			var Left:InterpreterOutput = InterpreteVertex(vertex.Left, StorageObject)
+			var Left:InterpreterOutput = await InterpreteVertex(vertex.Left, StorageObject)
 			if Left.Breaker == InterpreterOutput.BREAKER.ERROR:
 				return Left
 			if Left.Output.Type in [DataToken.DATATYPE.LIST, DataToken.DATATYPE.DICTIONARY, DataToken.DATATYPE.OBJECT]:
 				return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Left.Position, 'Invalid Key'))
-			var Right:InterpreterOutput = InterpreteVertex(vertex.Right, StorageObject)
+			var Right:InterpreterOutput = await InterpreteVertex(vertex.Right, StorageObject)
 			if Right.Breaker == InterpreterOutput.BREAKER.ERROR:
 				return Right
 			return InterpreterOutput.Wrap_data(MarbleData.new(DataToken.DATATYPE.DICTIONARY, {Left.Output.Value : Right.Output.Value}))
@@ -1357,7 +1382,7 @@ func InterpreteBinaryVertex(vertex:BinaryOperatorVertex, StorageObject:Storage) 
 					var Instructions:Array = vertex.Right.Data.instructions
 					StorageObject.create_function(Name, MarbleFunction.new(Type, Name, Parameters, Instructions))
 				'if':
-					var if_condition:InterpreterOutput = InterpreteVertex(vertex.Left.Operand, child_storage_object)
+					var if_condition:InterpreterOutput = await InterpreteVertex(vertex.Left.Operand, child_storage_object)
 					if if_condition.Breaker == InterpreterOutput.BREAKER.ERROR:
 						return if_condition
 					if if_condition.Output.Type != DataToken.DATATYPE.BOOLEAN:
@@ -1365,28 +1390,28 @@ func InterpreteBinaryVertex(vertex:BinaryOperatorVertex, StorageObject:Storage) 
 						if if_condition.Output == null:
 							return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.DATATYPE_MISMATCH, vertex.Left.Operand.Position))
 					if if_condition.Output.Value:
-						return Interprete(vertex.Right.Data.instructions, child_storage_object)
+						return await Interprete(vertex.Right.Data.instructions, child_storage_object)
 					else:
 						var else_if_conditions:Array = vertex.Right.Data.else_ifs
 						var else_if_instruction = null
 						for else_if_condition:BinaryOperatorVertex in else_if_conditions:
-							var else_if_key:InterpreterOutput = InterpreteVertex(else_if_condition.Left.Operand, child_storage_object)
+							var else_if_key:InterpreterOutput = await InterpreteVertex(else_if_condition.Left.Operand, child_storage_object)
 							if else_if_key.Breaker == InterpreterOutput.BREAKER.ERROR:
 								return else_if_key
 							if else_if_key.Output.Value:
 								else_if_instruction = else_if_condition.Right.Data.instructions
 								break
 						if else_if_instruction:
-							return Interprete(else_if_instruction, child_storage_object)
+							return await Interprete(else_if_instruction, child_storage_object)
 						else:
 							if vertex.Right.Data.else:
-								return Interprete(vertex.Right.Data.else.Data.instructions, child_storage_object)
+								return await Interprete(vertex.Right.Data.else.Data.instructions, child_storage_object)
 				'For':
 					var IN:BinaryOperatorVertex = vertex.Left.Operand
-					var get_variable:InterpreterOutput = InterpreteVertex(IN.Left, child_storage_object)
+					var get_variable:InterpreterOutput = await InterpreteVertex(IN.Left, child_storage_object)
 					if get_variable.Breaker == InterpreterOutput.BREAKER.ERROR:
 						return get_variable
-					var Iteratable:InterpreterOutput = InterpreteDataVertex(IN.Right, child_storage_object)
+					var Iteratable:InterpreterOutput = await InterpreteDataVertex(IN.Right, child_storage_object)
 					if Iteratable.Breaker == InterpreterOutput.BREAKER.ERROR:
 						return Iteratable
 					#Lists only
@@ -1394,7 +1419,7 @@ func InterpreteBinaryVertex(vertex:BinaryOperatorVertex, StorageObject:Storage) 
 						return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, IN.Right.Position, 'Lists Only!'))
 					for data:MarbleData in Iteratable.Output.Value:
 						get_variable.Output.Value = data.Value
-						var interpreter_output:InterpreterOutput = Interprete(vertex.Right.Data.instructions, child_storage_object)
+						var interpreter_output:InterpreterOutput = await Interprete(vertex.Right.Data.instructions, child_storage_object)
 						match interpreter_output.Breaker:
 							InterpreterOutput.BREAKER.BREAK:
 								break
@@ -1403,23 +1428,23 @@ func InterpreteBinaryVertex(vertex:BinaryOperatorVertex, StorageObject:Storage) 
 							InterpreterOutput.BREAKER.RETURN, InterpreterOutput.BREAKER.ERROR:
 								return interpreter_output
 				'While':
-					var while_condition:InterpreterOutput = InterpreteVertex(vertex.Left.Operand, child_storage_object)
+					var while_condition:InterpreterOutput = await InterpreteVertex(vertex.Left.Operand, child_storage_object)
 					if while_condition.Breaker == InterpreterOutput.BREAKER.ERROR:
 						return while_condition
 					while while_condition.Output.Value:
-						var interpreter_output:InterpreterOutput = Interprete(vertex.Right.Data.instructions, child_storage_object)
+						var interpreter_output:InterpreterOutput = await Interprete(vertex.Right.Data.instructions, child_storage_object)
 						match interpreter_output.Breaker:
 							InterpreterOutput.BREAKER.BREAK:
 								break
 							InterpreterOutput.BREAKER.CONTINUE, InterpreterOutput.BREAKER.NONE:
-								while_condition = InterpreteVertex(vertex.Left.Operand, child_storage_object)
+								while_condition = await InterpreteVertex(vertex.Left.Operand, child_storage_object)
 								if while_condition.Breaker == InterpreterOutput.BREAKER.ERROR:
 									return while_condition
 							InterpreterOutput.BREAKER.RETURN, InterpreterOutput.BREAKER.ERROR:
 								return interpreter_output
 						
 				#'Match':
-					#var match_value = InterpreteVertex(vertex.Left.VertexValue, child_storage_object)
+					#var match_value = await InterpreteVertex(vertex.Left.VertexValue, child_storage_object)
 					#if match_value is Error:
 						#return match_value
 					#var instructions = null
@@ -1431,7 +1456,7 @@ func InterpreteBinaryVertex(vertex:BinaryOperatorVertex, StorageObject:Storage) 
 							#if case.Left.VertexValue.VertexValue == match_value.Value:
 								#instructions = case.Right.VertexValue.instructions
 								#break
-					#var res = Interprete(instructions, child_storage_object)
+					#var res = await Interprete(instructions, child_storage_object)
 					#if res is Error:
 						#return res
 				_:
@@ -1445,12 +1470,12 @@ func InterpreteUnaryVertex(vertex:UnaryOperatorVertex, StorageObject:Storage) ->
 	if vertex.Operator is OperatorToken:
 		match vertex.Operator.OperatorType:
 			OperatorToken.OPERATORTYPE.NOT, OperatorToken.OPERATORTYPE.SUBTRACT:
-				var interpreter_output:InterpreterOutput = InterpreteVertex(vertex.Operand, StorageObject)
+				var interpreter_output:InterpreterOutput = await InterpreteVertex(vertex.Operand, StorageObject)
 				if interpreter_output.Breaker == InterpreterOutput.BREAKER.ERROR:
 					return interpreter_output
 				return interpreter_output.wrap_data(DataOperator.negate(interpreter_output.Output))
 			OperatorToken.OPERATORTYPE.ADD:
-				return InterpreteVertex(vertex.Operand, StorageObject)
+				return await InterpreteVertex(vertex.Operand, StorageObject)
 			_:
 				print(vertex)
 				breakpoint
@@ -1464,7 +1489,7 @@ func InterpreteUnaryVertex(vertex:UnaryOperatorVertex, StorageObject:Storage) ->
 					return InterpreterOutput.Wrap_data(StorageObject.create_variable(vertex.Operand.Data, MarbleData.new(vertex.Operator.TokenValue)))
 			'Return':
 				if StorageObject.has_variable('Return'):
-					return Assign_operation(BinaryOperatorVertex.new(DataVertex.new(DataToken.DATATYPE.IDENTIFIER, null, 'Return'), OperatorToken.new(), vertex.Operand), StorageObject)
+					return await Assign_operation(BinaryOperatorVertex.new(DataVertex.new(DataToken.DATATYPE.IDENTIFIER, null, 'Return'), OperatorToken.new(), vertex.Operand), StorageObject)
 				else:
 					return InterpreterOutput.Wrap_error(Error.new(Error.TYPE.MESSAGE, vertex.Operator.Position, 'You can only do this in a function'))
 	print(vertex)
@@ -1501,7 +1526,7 @@ func InterpreteKeywordVertex(vertex:KeywordVertex, _StorageObject:Storage) -> In
 
 func Interprete(Parsed:Array, StorageObject:Storage = Storage.new(true)) -> InterpreterOutput:
 	for vertex:Vertex in Parsed:
-		var interpreter_output:InterpreterOutput = InterpreteVertex(vertex, StorageObject)
+		var interpreter_output:InterpreterOutput = await InterpreteVertex(vertex, StorageObject)
 		match interpreter_output.Breaker:
 			InterpreterOutput.BREAKER.NONE:
 				continue

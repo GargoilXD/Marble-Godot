@@ -1,3 +1,9 @@
+VBoxContainer
+MarginContainer
+LineEdit
+AcceptDialog
+CenterContainer
+PopupPanel
 OptionButton
 CodeEdit
 VSeparator
@@ -7,9 +13,3 @@ TabContainer
 TabBar
 Node
 Button
-HBoxContainer
-VBoxContainer
-Label
-MarginContainer
-TextureRect
-VSplitContainer

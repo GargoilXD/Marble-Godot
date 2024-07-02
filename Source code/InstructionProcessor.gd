@@ -18,6 +18,7 @@ var Tokenizer_object:Tokenizer = Tokenizer.new()
 var Parser_object:Parser = Parser.new()
 var Interpreter_object:Interpreter = Interpreter.new()
 var Stop_at:DISPLAY
+@onready var accept_dialog:AcceptDialog = $AcceptDialog
 
 func Run() -> void:
 	#region Tokenize
@@ -55,7 +56,7 @@ func Run() -> void:
 	#region Interprete
 	Interpreter.Output = ''
 	var Output:String = ''
-	var interpreter_output:InterpreterOutput = Interpreter_object.Interprete(vertexes)
+	var interpreter_output:InterpreterOutput = await Interpreter_object.Interprete(vertexes)
 	match interpreter_output.Breaker:
 		InterpreterOutput.BREAKER.NONE:
 			Output = str(interpreter_output.Output)
@@ -76,6 +77,7 @@ func _ready() -> void:
 	Stop_at = Save_data.Stop_at
 	Tab.current_tab = Stop_at
 	Option_button.select(Stop_at)
+	Interpreter_object.PopUp_input = accept_dialog
 	#region Highlighter
 	var Highlighter:CodeHighlighter = CodeHighlighter.new()
 	Highlighter.number_color = Color.LIGHT_GREEN
